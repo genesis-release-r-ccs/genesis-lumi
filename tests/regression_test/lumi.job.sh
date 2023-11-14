@@ -14,7 +14,7 @@ module load craype-accel-amd-gfx90a
 module load rocm
 module load cray-libsci
 
-GENESIS_HOME="../../"
+GENESIS_HOME="$(pwd)/../../"
 GENESIS_PATH="${GENESIS_HOME}/src/spdyn/"
 GENESIS_TEST="${GENESIS_HOME}/tests/regression_test/"
 
