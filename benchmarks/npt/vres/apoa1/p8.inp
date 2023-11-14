@@ -1,0 +1,51 @@
+[INPUT]
+topfile = ../../../inputs/apoa1/top_all27_prot_lipid.rtf
+parfile = ../../../inputs/apoa1/par_all27_prot_lipid.prm
+psffile = ../../../inputs/apoa1/apoa1.psf
+pdbfile = ../../../inputs/apoa1/apoa1.pdb
+rstfile = ../../../inputs/apoa1/apoa1.rst
+
+[ENERGY]
+forcefield       = CHARMM
+electrostatic    = PME
+switchdist       = 10.0
+cutoffdist       = 12.0
+pairlistdist     = 13.5
+pme_alpha        = 0.34
+pme_ngrid_x      =   80
+pme_ngrid_y      =   80
+pme_ngrid_z      =   64
+pme_nspline      =    4
+                
+[DYNAMICS]      
+integrator       =   VRES
+nsteps           =   6000
+timestep         = 0.0035
+eneout_period    =     60
+nbupdate_period  =      6
+elec_long_period =      2
+thermostat_period =     6
+barostat_period  =      6
+hydrogen_mr      =    YES
+hmr_target       = solute
+hmr_ratio        =    3.0
+hmr_ratio_xh1    =    2.0
+
+[CONSTRAINTS]
+rigid_bond        = YES 
+
+[ENSEMBLE]
+ensemble         = NPT
+tpcontrol        = BUSSI
+pressure         = 1.0
+temperature      = 300
+group_tp         = YES
+
+[BOUNDARY]
+type             = PBC
+box_size_x       = 107.4979
+box_size_y       = 107.4979
+box_size_z       =  76.7872
+domain_x         = 2
+domain_y         = 2
+domain_z         = 2

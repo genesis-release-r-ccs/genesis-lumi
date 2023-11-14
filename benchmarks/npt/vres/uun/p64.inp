@@ -1,0 +1,59 @@
+[INPUT]
+topfile = ../../../inputs/uun/toppar/top_all36_prot.rtf,\
+../../../inputs/uun/toppar/top_all36_na.rtf,\
+../../../inputs/uun/toppar/top_all36_lipid.rtf,\
+../../../inputs/uun/toppar/top_all36_cgenff.rtf,\
+../../../inputs/uun/toppar/top_all36_carb.rtf
+parfile = ../../../inputs/uun/toppar/par_all36_prot.prm,\
+../../../inputs/uun/toppar/par_all36_na.prm,\
+../../../inputs/uun/toppar/par_all36_carb.prm,\
+../../../inputs/uun/toppar/par_all36_lipid.prm,\
+../../../inputs/uun/toppar/par_all36_cgenff.prm
+strfile = ../../../inputs/uun/toppar/toppar_water_ions.genesis.str
+psffile = ../../../inputs/uun/uun.psf
+pdbfile = ../../../inputs/uun/uun.pdb
+rstfile = ../../../inputs/uun/uun.rst
+
+[ENERGY]
+forcefield       = CHARMM
+electrostatic    = PME
+switchdist       = 10
+cutoffdist       = 12
+pairlistdist     = 13.5
+pme_ngrid_x      =  128
+pme_ngrid_y      =  128
+pme_ngrid_z      =  128
+pme_nspline      =  4
+water_model      = NONE
+               
+[DYNAMICS]     
+integrator       =   VRES
+nsteps           =   6000
+timestep         = 0.0035
+eneout_period    =     60
+nbupdate_period  =      6
+elec_long_period =      2
+thermostat_period =     6
+barostat_period  =      6
+hydrogen_mr      =    YES
+hmr_target       = solute
+hmr_ratio        =    3.0
+hmr_ratio_xh1    =    2.0
+
+[CONSTRAINTS]
+rigid_bond        = YES
+
+[ENSEMBLE]
+ensemble         = NPT
+tpcontrol        = BUSSI
+temperature      = 300
+group_tp         = YES
+
+[BOUNDARY]
+type             = PBC
+box_size_x       = 126.5795
+box_size_y       = 126.5795
+box_size_z       = 130.6978
+domain_x         = 4
+domain_y         = 4
+domain_z         = 4

@@ -1,0 +1,47 @@
+[INPUT]
+prmtopfile = step3_input.parm7
+ambcrdfile = step3_input.rst7
+rstfile    = heat.rst
+
+[OUTPUT]
+rstfile    = equil_hmr.rst
+
+[ENERGY]
+forcefield       =  AMBER
+electrostatic    =    PME
+switchdist       =      8
+cutoffdist       =      8
+pairlistdist     =    9.5
+pme_ngrid_x      =     64
+pme_ngrid_y      =     64
+pme_ngrid_z      =     64
+pme_nspline      =      4
+
+[DYNAMICS]
+integrator       =   VVER
+nsteps           = 200000
+timestep         =  0.002
+eneout_period    =    100
+nbupdate_period  =     10
+rstout_period    =  20000
+hydrogen_mr      =    YES
+hmr_target       = solute
+hmr_ratio_xh1    =    2.0
+
+[CONSTRAINTS]
+rigid_bond       =    YES
+water_model      =    WAT
+
+[ENSEMBLE]
+ensemble         =    NPT
+tpcontrol        =  BUSSI       # thermostat and barostat
+temperature      =    300
+pressure         =    1.0       # atm
+group_tp         =    YES
+
+[BOUNDARY]
+type             =   PBC
+box_size_x       =   65.50
+box_size_y       =   65.50
+box_size_z       =   65.50
+
