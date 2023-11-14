@@ -91,7 +91,7 @@ src/analysis/utilities/rpath_generator/rpath_generator
 src/analysis/utilities/table_generator/table_generator
 src/atdyn/atdyn
 src/cgdyn/cgdyn
-src/config.h
+#src/config.h
 src/config.h.in
 src/genesis*.tar.gz
 src/lib/*/.deps/
