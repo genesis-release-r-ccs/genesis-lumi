@@ -906,185 +906,171 @@ __device__ __inline__ double __shfl_xor( double var, int mask, int width )
 }
 #endif
 
-/*
- *
- */
-#if defined(_MIXED) || defined(_SINGLE)
-//__launch_bounds__(128,12)  // for SP
-#else
-//__launch_bounds__(128,8)  // for DP
-#endif
-__global__ void kern_compute_energy_nonbond_table_linear_univ__energyforce_intra_cell(
-    REAL        * _coord_pbc,           // ( 1:atom_domain, 1:3 )
-    REAL        * _force,               // ( 1:atom_domain, 1:3 )
-    double      * _ene_virial,          // ( 5 )
-    double      * _ene_viri_mid,        // ( 1:5, 1:ncel_max)
-    const char  * _cell_move,           // ( 1:3, 1:ncel_max, 1:ncel_max )
-    const int   * _atmcls_pbc,          // ( 1:atom_domain )
-    const int   * _natom,               // ( 1:ncel_max )
-    const int   * _start_atom,          // ( 1:ncel_max )
-    const REAL  * _nonb_lj12,           // ( 1:num_atom_cls, 1:num_atom_cls )
-    const REAL  * _nonb_lj6,            // ( 1:num_atom_cls, 1:num_atom_cls )
-    const REAL  * _table_ene,           // ( 1:6*cutoff_int )
-    const REAL  * _table_grad,          // ( 1:6*cutoff_int )
-    const int   * _univ_cell_pairlist1, // ( 1:2, 1:univ_maxcell )
-    const char  * _univ_mask2,          // ( 1:univ_mask2_size, 1:univ_ncell_near)
-    const int   * _univ_ix_natom,       // ( 1:univ_maxcell1 )
-    const uchar * _univ_ix_list,        // ( 1:MaxAtom, 1:univ_maxcell1 )
-    const int   * _univ_iy_natom,       // ( 1:univ_maxcell1 )
-    const uchar * _univ_iy_list,        // ( 1:MaxAtom, 1:univ_maxcell1 )
-    const int   * _univ_ij_sort_list,   // ( 1:univ_maxcell1 )
-    int  atom_domain,
-    int  MaxAtom,
-    int  MaxAtomCls,
-    int  num_atom_cls,
-    int  ncel_local,
-    int  ncel_bound,
-    int  ncel_max,
-    int  cutoff_int,
-    int  univ_maxcell,
-    int  univ_maxcell1,
-    int  univ_mask2_size,
-    int  univ_natom_max,
-    int  index_start,
-    int  index_end,
-    REAL  density,
-    REAL  cutoff2
-    )
+
+template<int WARP_X, int WARP_Y>
+__global__
+void kern_compute_energy_nonbond_table_linear_univ__energyforce_intra_cell
+(
+  REAL*        _coord_pbc,           // ( 1:atom_domain, 1:3 )
+  REAL*        _force,               // ( 1:atom_domain, 1:3 )
+  double*      _ene_virial,          // ( 5 )
+  double*      _ene_viri_mid,        // ( 1:5, 1:ncel_max)
+  const char*  _cell_move,           // ( 1:3, 1:ncel_max, 1:ncel_max )
+  const int*   _atmcls_pbc,          // ( 1:atom_domain )
+  const int*   _natom,               // ( 1:ncel_max )
+  const int*   _start_atom,          // ( 1:ncel_max )
+  const REAL*  _nonb_lj12,           // ( 1:num_atom_cls, 1:num_atom_cls )
+  const REAL*  _nonb_lj6,            // ( 1:num_atom_cls, 1:num_atom_cls )
+  const REAL*  _table_ene,           // ( 1:6*cutoff_int )
+  const REAL*  _table_grad,          // ( 1:6*cutoff_int )
+  const int*   _univ_cell_pairlist1, // ( 1:2, 1:univ_maxcell )
+  const char*  _univ_mask2,          // ( 1:univ_mask2_size, 1:univ_ncell_near)
+  const int*   _univ_ix_natom,       // ( 1:univ_maxcell1 )
+  const uchar* _univ_ix_list,        // ( 1:MaxAtom, 1:univ_maxcell1 )
+  const int*   _univ_iy_natom,       // ( 1:univ_maxcell1 )
+  const uchar* _univ_iy_list,        // ( 1:MaxAtom, 1:univ_maxcell1 )
+  const int*   _univ_ij_sort_list,   // ( 1:univ_maxcell1 )
+  int  atom_domain,
+  int  MaxAtom,
+  int  MaxAtomCls,
+  int  num_atom_cls,
+  int  ncel_local,
+  int  ncel_bound,
+  int  ncel_max,
+  int  cutoff_int,
+  int  univ_maxcell,
+  int  univ_maxcell1,
+  int  univ_mask2_size,
+  int  univ_natom_max,
+  int  index_start,
+  int  index_end,
+  REAL  density,
+  REAL  cutoff2
+)
 {
-#undef  num_thread_xx
-#undef  num_thread_xy
-#undef  id_thread_xx
-#undef  id_thread_xy
-#define num_thread_xx   8
-#define num_thread_xy   4
-#define id_thread_xx  (id_thread_x / num_thread_xy)
-#define id_thread_xy  (id_thread_x & (num_thread_xy-1))
+  const int  num_thread_y = blockDim.y;
+  const int  id_thread_x = threadIdx.x;
+  const int  id_thread_y = threadIdx.y;
 
-    const int  num_thread_y = blockDim.y;
-    const int  id_thread_x = threadIdx.x;
-    const int  id_thread_y = threadIdx.y;
-    REAL  _force_local[3];
-    double val_energy_elec = 0.0;
-    double val_energy_evdw = 0.0;
+  REAL   _force_local[3];
+  double val_energy_elec = 0.0;
+  double val_energy_evdw = 0.0;
 
-    int  index = index_start + id_thread_y + (num_thread_y * blockIdx.x);
-    if ( index > index_end ) return;
-    int  univ_ij = index;
+  int index = index_start + id_thread_y + (num_thread_y * blockIdx.x);
+  if (index > index_end) return;
+  int univ_ij = index;
 
-    const int  i = univ_ij;
-    const int  j = univ_ij;
-    const int  start_i = start_atom(i);
-    const int  start_j = start_atom(j);
+  const int i = univ_ij;
+  const int j = univ_ij;
+  const int start_i = start_atom(i);
+  const int start_j = start_atom(j);
 
-    int  ix_natom = natom(i);
-    int  iy_natom = natom(j);
+  int ix_natom = natom(i);
+  int iy_natom = natom(j);
 
-    if ( ix_natom * iy_natom <= 0 ) return;
+  if (ix_natom * iy_natom <= 0) return;
 
-//  printf("testtestaa %d \n",ix_natom);
-    for ( int ix = id_thread_xx + 1; ix <= ix_natom; ix += num_thread_xx ) {
+  for (int ix = (id_thread_x / WARP_Y) + 1; ix <= ix_natom; ix += WARP_X) {
 
-        int ixx = ix + start_i;
-        REAL  rtmp1   = __ldg(&coord_pbc(ixx,1));
-        REAL  rtmp2   = __ldg(&coord_pbc(ixx,2));
-        REAL  rtmp3   = __ldg(&coord_pbc(ixx,3));
-//      printf("testtestbb %d %d %f %f %f \n",i,ix,rtmp1,rtmp2,rtmp3);
-        REAL  iqtmp   = __ldg(&coord_pbc(ixx,4));
-        int   iatmcls = __ldg(&atmcls_pbc(ixx));
+    int ixx = ix + start_i;
+    REAL rtmp1   = __ldg(&coord_pbc(ixx,1));
+    REAL rtmp2   = __ldg(&coord_pbc(ixx,2));
+    REAL rtmp3   = __ldg(&coord_pbc(ixx,3));
+    REAL iqtmp   = __ldg(&coord_pbc(ixx,4));
+    int  iatmcls = __ldg(&atmcls_pbc(ixx));
 
-        force_local(1) = 0.0;
-        force_local(2) = 0.0;
-        force_local(3) = 0.0;
-        REAL   elec_temp = 0.0;
-        REAL   evdw_temp = 0.0;
+    force_local(1) = 0.0;
+    force_local(2) = 0.0;
+    force_local(3) = 0.0;
+    REAL elec_temp = 0.0;
+    REAL evdw_temp = 0.0;
 
-        for ( int iy = id_thread_xy + 1; iy <= iy_natom; iy += num_thread_xy ) {
+    for (int iy = (id_thread_x & (WARP_Y-1)) + 1; iy <= iy_natom; iy += WARP_Y) {
 
-            int   iyy = start_j + iy;
-            REAL  grad_coef = 0.0;
-            REAL  dij1 = 0.0;
-            REAL  dij2 = 0.0;
-            REAL  dij3 = 0.0;
-            REAL  rij2;
+      int  iyy = start_j + iy;
+      REAL grad_coef = 0.0;
+      REAL dij1 = 0.0;
+      REAL dij2 = 0.0;
+      REAL dij3 = 0.0;
+      REAL rij2;
 
-            int idx = iy + (ix-1)*univ_natom_max;
-            if (univ_mask2(idx,univ_ij)) {
+      int idx = iy + (ix-1)*univ_natom_max;
+      if (univ_mask2(idx,univ_ij)) {
 
-                dij1 = rtmp1 - __ldg(&coord_pbc(iyy,1));
-                dij2 = rtmp2 - __ldg(&coord_pbc(iyy,2));
-                dij3 = rtmp3 - __ldg(&coord_pbc(iyy,3));
-                rij2 = dij1*dij1 + dij2*dij2 + dij3*dij3;
+        dij1 = rtmp1 - __ldg(&coord_pbc(iyy,1));
+        dij2 = rtmp2 - __ldg(&coord_pbc(iyy,2));
+        dij3 = rtmp3 - __ldg(&coord_pbc(iyy,3));
+        rij2 = dij1*dij1 + dij2*dij2 + dij3*dij3;
+        rij2 = cutoff2 * density / rij2;
 
-                rij2 = cutoff2 * density / rij2;
+        REAL jqtmp   = __ldg(&coord_pbc(iyy,4));
+        int  jatmcls = __ldg(&atmcls_pbc(iyy));
+        REAL lj12 = __ldg(&nonb_lj12(jatmcls,iatmcls));
+        REAL lj6  = __ldg(&nonb_lj6( jatmcls,iatmcls));
 
-                REAL  jqtmp   = __ldg(&coord_pbc(iyy,4));
-                int   jatmcls = __ldg(&atmcls_pbc(iyy));
-                REAL  lj12 = __ldg(&nonb_lj12(jatmcls,iatmcls));
-                REAL  lj6  = __ldg(&nonb_lj6( jatmcls,iatmcls));
+        int  L  = int(rij2);
+        REAL R  = rij2 - L;
+        int  L1 = 3*L - 2;
 
-                int   L  = int(rij2);
-                REAL  R  = rij2 - L;
-                int   L1 = 3*L - 2;
+        REAL tg0  = __ldg(&table_ene(L1  ));
+        REAL tg1  = __ldg(&table_ene(L1+1));
+        REAL tg2  = __ldg(&table_ene(L1+2));
+        REAL tg3  = __ldg(&table_ene(L1+3));
+        REAL tg4  = __ldg(&table_ene(L1+4));
+        REAL tg5  = __ldg(&table_ene(L1+5));
+        REAL term_lj12 = tg0 + R*(tg3-tg0);
+        REAL term_lj6  = tg1 + R*(tg4-tg1);
+        REAL term_elec = tg2 + R*(tg5-tg2);
 
-                REAL  tg0  = __ldg(&table_ene(L1  ));
-                REAL  tg1  = __ldg(&table_ene(L1+1));
-                REAL  tg2  = __ldg(&table_ene(L1+2));
-                REAL  tg3  = __ldg(&table_ene(L1+3));
-                REAL  tg4  = __ldg(&table_ene(L1+4));
-                REAL  tg5  = __ldg(&table_ene(L1+5));
-                REAL  term_lj12 = tg0 + R*(tg3-tg0);
-                REAL  term_lj6  = tg1 + R*(tg4-tg1);
-                REAL  term_elec = tg2 + R*(tg5-tg2);
+        elec_temp += iqtmp*jqtmp*term_elec;
+        evdw_temp += term_lj12*lj12 - term_lj6*lj6;
 
-                elec_temp += iqtmp*jqtmp*term_elec;
-                evdw_temp += term_lj12*lj12 - term_lj6*lj6;
+        tg0 = __ldg(&table_grad(L1  ));
+        tg1 = __ldg(&table_grad(L1+1));
+        tg2 = __ldg(&table_grad(L1+2));
+        tg3 = __ldg(&table_grad(L1+3));
+        tg4 = __ldg(&table_grad(L1+4));
+        tg5 = __ldg(&table_grad(L1+5));
+        term_lj12 = tg0 + R*(tg3-tg0);
+        term_lj6  = tg1 + R*(tg4-tg1);
+        term_elec = tg2 + R*(tg5-tg2);
 
-                tg0  = __ldg(&table_grad(L1  ));
-                tg1  = __ldg(&table_grad(L1+1));
-                tg2  = __ldg(&table_grad(L1+2));
-                tg3  = __ldg(&table_grad(L1+3));
-                tg4  = __ldg(&table_grad(L1+4));
-                tg5  = __ldg(&table_grad(L1+5));
-                term_lj12 = tg0 + R*(tg3-tg0);
-                term_lj6  = tg1 + R*(tg4-tg1);
-                term_elec = tg2 + R*(tg5-tg2);
+        grad_coef = term_lj12*lj12 - term_lj6*lj6 + iqtmp*jqtmp*term_elec;
+      }
 
-                grad_coef = term_lj12*lj12 - term_lj6*lj6 + iqtmp*jqtmp*term_elec;
-            }
+      REAL work1 = grad_coef*dij1;
+      REAL work2 = grad_coef*dij2;
+      REAL work3 = grad_coef*dij3;
 
-            REAL  work1 = grad_coef*dij1;
-            REAL  work2 = grad_coef*dij2;
-            REAL  work3 = grad_coef*dij3;
-
-            force_local(1) -= work1;
-            force_local(2) -= work2;
-            force_local(3) -= work3;
-        }
-        val_energy_elec += elec_temp/2.0;
-        val_energy_evdw += evdw_temp/2.0;
-
-        // update energy/force(:,:,i)
-        WARP_RSUM_12( force_local(1) );
-        WARP_RSUM_12( force_local(2) );
-        WARP_RSUM_12( force_local(3) );
-        if ( id_thread_xy == 0 ) {
-            if ( force_local(1) != 0.0 ) atomicAdd( &(force(ixx,1)), force_local(1) );
-            if ( force_local(2) != 0.0 ) atomicAdd( &(force(ixx,2)), force_local(2) );
-            if ( force_local(3) != 0.0 ) atomicAdd( &(force(ixx,3)), force_local(3) );
-        }
+      force_local(1) -= work1;
+      force_local(2) -= work2;
+      force_local(3) -= work3;
     }
 
-    WARP_RSUM_12345 ( val_energy_elec );
-    WARP_RSUM_12345 ( val_energy_evdw );
-    if (id_thread_x < 5) {
-        int n = id_thread_x + 1;
-        if ( n == 1 ) ene_viri_mid(n,index) = val_energy_elec;
-        if ( n == 2 ) ene_viri_mid(n,index) = val_energy_evdw;
-        if ( n == 3 ) ene_viri_mid(n,index) = 0.0;
-        if ( n == 4 ) ene_viri_mid(n,index) = 0.0;
-        if ( n == 5 ) ene_viri_mid(n,index) = 0.0;
+    val_energy_elec += elec_temp/2.0;
+    val_energy_evdw += evdw_temp/2.0;
+
+    WARP_RSUM_12(force_local(1));
+    WARP_RSUM_12(force_local(2));
+    WARP_RSUM_12(force_local(3));
+
+    if ((id_thread_x & (WARP_Y-1)) == 0) {
+      if (force_local(1) != 0.0) atomicAdd(&(force(ixx,1)), force_local(1));
+      if (force_local(2) != 0.0) atomicAdd(&(force(ixx,2)), force_local(2));
+      if (force_local(3) != 0.0) atomicAdd(&(force(ixx,3)), force_local(3));
     }
+  }
+
+  WARP_RSUM_12345(val_energy_elec);
+  WARP_RSUM_12345(val_energy_evdw);
+  if (id_thread_x < 5) {
+    int n = id_thread_x + 1;
+    if (n == 1) ene_viri_mid(n,index) = val_energy_elec;
+    if (n == 2) ene_viri_mid(n,index) = val_energy_evdw;
+    if (n == 3) ene_viri_mid(n,index) = 0.0;
+    if (n == 4) ene_viri_mid(n,index) = 0.0;
+    if (n == 5) ene_viri_mid(n,index) = 0.0;
+  }
 }
 
 // FEP
@@ -6768,261 +6754,273 @@ double cur_time()
 /*
  * JJ : energy calculation with linear lookup table
  */
-void gpu_launch_compute_energy_nonbond_table_linear_univ(
-    REAL    *_coord_pbc,               // ( 1:atom_domain, 1:3 )
-    REAL    *_force,                   // ( 1:atom_domain, 1:3 )
-    double  *_ene_virial,
-    const char  *_cell_move,           // ( 1:3, 1:ncel_max, 1:ncel_max )
-    const int   *_natom,               // ( 1:ncel_max )
-    const int   *_start_atom,          // ( 1:ncel_max )
-    const REAL  *_nonb_lj12,           // ( 1:num_atom_cls, 1:num_atom_cls )
-    const REAL  *_nonb_lj6,            // ( 1:num_atom_cls, 1:num_atom_cls )
-    const REAL  *_nonb_lj6_factor,     // ( 1:num_atom_cls )
-    const REAL  *_table_ene,           // ( 1:6*cutoff_int )
-    const REAL  *_table_grad,          // ( 1:6*cutoff_int )
-    const int   *_univ_cell_pairlist1, // ( 1:2, 1:univ_maxcell )
-    const char  *_univ_mask2,          // ( 1:univ_mask2_size, 1:univ_ncell_near)
-    const int   *_univ_ix_natom,       // ( 1:univ_maxcell1 )
-    const uchar *_univ_ix_list,        // ( 1:MaxAtom, 1:univ_maxcell1 )
-    const int   *_univ_iy_natom,       // ( 1:univ_maxcell1 )
-    const uchar *_univ_iy_list,        // ( 1:MaxAtom, 1:univ_maxcell1 )
-    const int   *_univ_ij_sort_list,   // ( 1:univ_maxcell1 )
-    const char  *_virial_check,        // ( 1:ncel_max, 1:ncel_max)
-    int   atom_domain,
-    int   MaxAtom,
-    int   MaxAtomCls,
-    int   num_atom_cls,
-    int   ncel_local,
-    int   ncel_bound,
-    int   ncel_max,
-    int   cutoff_int,
-    int   univ_maxcell,
-    int   univ_maxcell1,
-    int   univ_ncell_nonzero,
-    int   univ_ncell_near,
-    int   univ_update,
-    int   univ_mask2_size,
-    int   univ_natom_max,
-    int   check_virial,
-    REAL  density,
-    REAL  cutoff2,
-    REAL  system_x,
-    REAL  system_y,
-    REAL  system_z
-    )
+void gpu_launch_compute_energy_nonbond_table_linear_univ
+(
+        REAL*   _coord_pbc,           // ( 1:atom_domain, 1:3 )
+        REAL*   _force,               // ( 1:atom_domain, 1:3 )
+        double* _ene_virial,
+  const char*   _cell_move,           // ( 1:3, 1:ncel_max, 1:ncel_max )
+  const int*    _natom,               // ( 1:ncel_max )
+  const int*    _start_atom,          // ( 1:ncel_max )
+  const REAL*   _nonb_lj12,           // ( 1:num_atom_cls, 1:num_atom_cls )
+  const REAL*   _nonb_lj6,            // ( 1:num_atom_cls, 1:num_atom_cls )
+  const REAL*   _nonb_lj6_factor,     // ( 1:num_atom_cls )
+  const REAL*   _table_ene,           // ( 1:6*cutoff_int )
+  const REAL*   _table_grad,          // ( 1:6*cutoff_int )
+  const int*    _univ_cell_pairlist1, // ( 1:2, 1:univ_maxcell )
+  const char*   _univ_mask2,          // ( 1:univ_mask2_size, 1:univ_ncell_near)
+  const int*    _univ_ix_natom,       // ( 1:univ_maxcell1 )
+  const uchar*  _univ_ix_list,        // ( 1:MaxAtom, 1:univ_maxcell1 )
+  const int*    _univ_iy_natom,       // ( 1:univ_maxcell1 )
+  const uchar*  _univ_iy_list,        // ( 1:MaxAtom, 1:univ_maxcell1 )
+  const int*    _univ_ij_sort_list,   // ( 1:univ_maxcell1 )
+  const char*   _virial_check,        // ( 1:ncel_max, 1:ncel_max)
+        int     atom_domain,
+        int     MaxAtom,
+        int     MaxAtomCls,
+        int     num_atom_cls,
+        int     ncel_local,
+        int     ncel_bound,
+        int     ncel_max,
+        int     cutoff_int,
+        int     univ_maxcell,
+        int     univ_maxcell1,
+        int     univ_ncell_nonzero,
+        int     univ_ncell_near,
+        int     univ_update,
+        int     univ_mask2_size,
+        int     univ_natom_max,
+        int     check_virial,
+        REAL    density,
+        REAL    cutoff2,
+        REAL    system_x,
+        REAL    system_y,
+        REAL    system_z
+)
 {
-
 #ifdef DEBUG
-    printf( "[%s,%s,%d]\n", __FILE__, __func__, __LINE__ );
-    printf( "MaxAtom = %d\n", MaxAtom );
-    printf( "atom_domain = %d\n", atom_domain );
-    printf( "MaxAtomCls = %d\n", MaxAtomCls );
-    printf( "num_atom_cls = %d\n", num_atom_cls );
-    printf( "ncel_local = %d\n", ncel_local );
-    printf( "ncel_bound = %d\n", ncel_bound );
-    printf( "ncel_max   = %d\n", ncel_max );
-    printf( "cutoff_int = %d\n", cutoff_int );
-    printf( "univ_maxcell = %d\n", univ_maxcell );
-    printf( "univ_maxcell1 = %d\n", univ_maxcell1 );
-    printf( "univ_ncell_nonzero = %d\n", univ_ncell_nonzero );
-    printf( "univ_update = %d\n", univ_update );
-    printf( "check_virial = %d\n", check_virial );
-    printf( "cutoff2 = %lf\n", cutoff2 );
+  printf( "[%s,%s,%d]\n", __FILE__, __func__, __LINE__ );
+  printf( "MaxAtom = %d\n", MaxAtom );
+  printf( "atom_domain = %d\n", atom_domain );
+  printf( "MaxAtomCls = %d\n", MaxAtomCls );
+  printf( "num_atom_cls = %d\n", num_atom_cls );
+  printf( "ncel_local = %d\n", ncel_local );
+  printf( "ncel_bound = %d\n", ncel_bound );
+  printf( "ncel_max   = %d\n", ncel_max );
+  printf( "cutoff_int = %d\n", cutoff_int );
+  printf( "univ_maxcell = %d\n", univ_maxcell );
+  printf( "univ_maxcell1 = %d\n", univ_maxcell1 );
+  printf( "univ_ncell_nonzero = %d\n", univ_ncell_nonzero );
+  printf( "univ_update = %d\n", univ_update );
+  printf( "check_virial = %d\n", check_virial );
+  printf( "cutoff2 = %lf\n", cutoff2 );
 #endif
 
-    static int first = 1;
+  static int first = 1;
 
-    // memory allocation
-    if ( first ) {
-        gpu_init_buffer(
-            _force,
-            _ene_virial,
-            _cell_move,
-            _nonb_lj12,
-            _nonb_lj6,
-            _nonb_lj6_factor,
-            _table_ene,
-            _table_grad,
-            _univ_cell_pairlist1,
-            _univ_mask2,
-            _univ_ix_natom,
-            _univ_ix_list,
-            _univ_iy_natom,
-            _univ_iy_list,
-            _virial_check,
-            atom_domain,
-            MaxAtom,
-            MaxAtomCls,
-            num_atom_cls,
-            ncel_local,
-            ncel_bound,
-            ncel_max,
-            cutoff_int,
-            univ_maxcell,
-            univ_maxcell1,
-            univ_ncell_near,
-            univ_mask2_size
-            );
+  // memory allocation
+  if (first) {
+    gpu_init_buffer
+    (
+      _force,
+      _ene_virial,
+      _cell_move,
+      _nonb_lj12,
+      _nonb_lj6,
+      _nonb_lj6_factor,
+      _table_ene,
+      _table_grad,
+      _univ_cell_pairlist1,
+      _univ_mask2,
+      _univ_ix_natom,
+      _univ_ix_list,
+      _univ_iy_natom,
+      _univ_iy_list,
+      _virial_check,
+      atom_domain,
+      MaxAtom,
+      MaxAtomCls,
+      num_atom_cls,
+      ncel_local,
+      ncel_bound,
+      ncel_max,
+      cutoff_int,
+      univ_maxcell,
+      univ_maxcell1,
+      univ_ncell_near,
+      univ_mask2_size
+    );
+  }
 
-    }
+  // send data to GPU
+  gpu_memcpy_h2d_energy
+  (
+    _coord_pbc,
+    _force,
+    _ene_virial,
+    _cell_move,
+    _nonb_lj12,
+    _nonb_lj6,
+    _nonb_lj6_factor,
+    _table_ene,
+    _table_grad,
+    _univ_cell_pairlist1,
+    _univ_mask2,
+    _univ_ix_natom,
+    _univ_ix_list,
+    _univ_iy_natom,
+    _univ_iy_list,
+    _univ_ij_sort_list,
+    _virial_check,
+    atom_domain,
+    MaxAtom,
+    univ_maxcell,
+    univ_ncell_near,
+    univ_mask2_size,
+    univ_update,
+    check_virial,
+    first
+  );
 
-    // send data to GPU
-    gpu_memcpy_h2d_energy(
-        _coord_pbc,
-        _force,
-        _ene_virial,
-        _cell_move,
-        _nonb_lj12,
-        _nonb_lj6,
-        _nonb_lj6_factor,
-        _table_ene,
-        _table_grad,
-        _univ_cell_pairlist1,
-        _univ_mask2,
-        _univ_ix_natom,
-        _univ_ix_list,
-        _univ_iy_natom,
-        _univ_iy_list,
-        _univ_ij_sort_list,
-        _virial_check,
-        atom_domain,
-        MaxAtom,
-        univ_maxcell,
-        univ_ncell_near,
-        univ_mask2_size,
-        univ_update,
-        check_virial,
-        first
-        );
+  first = 0;
 
-    first = 0;
+  dim3 def_dim3(1,1,1);
+  dim3 num_block;
+  dim3 num_thread;
+  int  index_start;
+  int  index_end;
 
-    // return; // debug
+  /* energy/force calculation within a cell */
+  const int WARP_X = 8;
+  const int WARP_Y = 4;
 
-    /* */
-    dim3  def_dim3(1,1,1);
-    dim3  num_block;
-    dim3  num_thread;
-    int  index_start, index_end;
+  index_start = 1;
+  index_end  = ncel_local;
+  num_thread = def_dim3;
+  num_thread.x = WARP_X * WARP_Y;
+  num_thread.y = 4;
+  num_block = def_dim3;
+  num_block.x = DIVCEIL((index_end - index_start + 1), num_thread.y);
 
-    /* energy/force calculation within a cell */
-    index_start = 1;
-    index_end  = ncel_local;
-    num_thread = def_dim3;
-    num_thread.x = 32; num_thread.y = 4;
-    assert( num_thread.x == 32 );
-    assert( num_thread.y ==  4 );
-    num_block = def_dim3;
-    num_block.x = DIVCEIL((index_end - index_start + 1), num_thread.y);
+  CUDA_CALL(cudaStreamWaitEvent(stream[0], event[1], 0));
+  CUDA_CALL(cudaStreamWaitEvent(stream[0], event[2], 0));
 
-    CUDA_CALL( cudaStreamWaitEvent( stream[0], event[1], 0 ) );
-    CUDA_CALL( cudaStreamWaitEvent( stream[0], event[2], 0 ) ); /* univ_mask2 */
+  /* energy calculation */
+  kern_compute_energy_nonbond_table_linear_univ__energyforce_intra_cell
+  <WARP_X, WARP_Y>
+  <<<num_block, num_thread, 0, stream[0]>>>
+  (
+    dev_coord_pbc,
+    dev_force,
+    dev_ene_virial,
+    dev_ene_viri_mid,
+    dev_cell_move,
+    dev_atmcls_pbc,
+    dev_natom,
+    dev_start_atom,
+    dev_nonb_lj12,
+    dev_nonb_lj6,
+    dev_table_ene,
+    dev_table_grad,
+    dev_univ_cell_pairlist1,
+    dev_univ_mask2,
+    dev_univ_ix_natom,
+    dev_univ_ix_list,
+    dev_univ_iy_natom,
+    dev_univ_iy_list,
+    dev_univ_ij_sort_list,
+    atom_domain,
+    MaxAtom,
+    MaxAtomCls,
+    num_atom_cls,
+    ncel_local,
+    ncel_bound,
+    ncel_max,
+    cutoff_int,
+    univ_maxcell,
+    univ_maxcell1,
+    univ_mask2_size,
+    univ_natom_max,
+    index_start, index_end,
+    density,
+    cutoff2
+  );
 
-    // CUDA_CALL( cudaStreamSynchronize( stream[1] ) );
+  /* energy/force calculation between different near cells */
+  index_start = ncel_local + 1;
+  index_end = univ_ncell_nonzero;
+  num_thread = def_dim3;
+  num_thread.x = 32;
+  num_thread.y = 4;
+  num_block = def_dim3;
+  num_block.x = DIVCEIL((index_end - index_start + 1), num_thread.y);
 
-    /* energy calculation */
-    kern_compute_energy_nonbond_table_linear_univ__energyforce_intra_cell<<< num_block, num_thread, 0, stream[0] >>>(
-        dev_coord_pbc,
-        dev_force,
-        dev_ene_virial,
-        dev_ene_viri_mid,
-        dev_cell_move,
-        dev_atmcls_pbc,
-        dev_natom,
-        dev_start_atom,
-        dev_nonb_lj12,
-        dev_nonb_lj6,
-        dev_table_ene,
-        dev_table_grad,
-        dev_univ_cell_pairlist1,
-        dev_univ_mask2,
-        dev_univ_ix_natom,
-        dev_univ_ix_list,
-        dev_univ_iy_natom,
-        dev_univ_iy_list,
-        dev_univ_ij_sort_list,
-        atom_domain,
-        MaxAtom,
-        MaxAtomCls,
-        num_atom_cls,
-        ncel_local,
-        ncel_bound,
-        ncel_max,
-        cutoff_int,
-        univ_maxcell,
-        univ_maxcell1,
-        univ_mask2_size,
-        univ_natom_max,
-        index_start, index_end,
-        density,
-        cutoff2 );
+  int max_iy_natom = (SMEM_SIZE/sizeof(REAL)/3) / (num_thread.y*NUM_CTA__ENERGYFORCE_INTER_CELL);
+  max_iy_natom -= max_iy_natom % 4;
 
-    /* energy/force calculation between different near cells */
-    index_start = ncel_local + 1;
-    index_end = univ_ncell_nonzero;
-    num_thread = def_dim3;
-    num_thread.x = 32; num_thread.y = 4;  /* do not change */
-    assert( num_thread.x == 32 );
-    assert( num_thread.y ==  4 );
-    num_block = def_dim3;
-    num_block.x = DIVCEIL((index_end - index_start + 1), num_thread.y);
+  size_t  smem_size = num_thread.y * max_iy_natom * 3 * sizeof(REAL);
 
-    int max_iy_natom = (SMEM_SIZE/sizeof(REAL)/3) / (num_thread.y*NUM_CTA__ENERGYFORCE_INTER_CELL);
-    max_iy_natom -= max_iy_natom % 4;
+  kern_compute_energy_nonbond_table_linear_univ__energyforce_inter_cell
+  <<<num_block, num_thread, smem_size, stream[0]>>>
+  (
+    dev_coord_pbc,
+    dev_force,
+    dev_ene_virial,
+    dev_ene_viri_mid,
+    dev_cell_move,
+    dev_atmcls_pbc,
+    dev_natom,
+    dev_start_atom,
+    dev_nonb_lj12,
+    dev_nonb_lj6,
+    dev_table_ene,
+    dev_table_grad,
+    dev_univ_cell_pairlist1,
+    dev_univ_mask2,
+    dev_univ_ix_natom,
+    dev_univ_ix_list,
+    dev_univ_iy_natom,
+    dev_univ_iy_list,
+    dev_univ_ij_sort_list,
+    dev_virial_check,
+    atom_domain,
+    MaxAtom,
+    MaxAtomCls,
+    num_atom_cls,
+    ncel_local,
+    ncel_bound,
+    ncel_max,
+    cutoff_int,
+    univ_maxcell,
+    univ_maxcell1,
+    univ_ncell_near,
+    univ_mask2_size,
+    univ_natom_max,
+    index_start,
+    index_end,
+    max_iy_natom,
+    density,
+    cutoff2,
+    system_x,
+    system_y,
+    system_z
+  );
 
-    size_t  smem_size = num_thread.y * max_iy_natom * 3 * sizeof(REAL);
+  num_block = def_dim3;
+  num_thread = def_dim3;
+  num_thread.x = 32;
+  num_thread.y = 32;
 
-    kern_compute_energy_nonbond_table_linear_univ__energyforce_inter_cell<<< num_block, num_thread, smem_size, stream[0] >>>(
-	dev_coord_pbc,
-	dev_force,
-	dev_ene_virial,
-	dev_ene_viri_mid,
-	dev_cell_move,
-	dev_atmcls_pbc,
-	dev_natom,
-	dev_start_atom,
-	dev_nonb_lj12,
-	dev_nonb_lj6,
-	dev_table_ene,
-	dev_table_grad,
-	dev_univ_cell_pairlist1,
-        dev_univ_mask2,
-	dev_univ_ix_natom,
-	dev_univ_ix_list,
-	dev_univ_iy_natom,
-	dev_univ_iy_list,
-	dev_univ_ij_sort_list,
-	dev_virial_check,
-	atom_domain,
-	MaxAtom,
-	MaxAtomCls,
-	num_atom_cls,
-	ncel_local,
-	ncel_bound,
-	ncel_max,
-	cutoff_int,
-	univ_maxcell,
-	univ_maxcell1,
-        univ_ncell_near,
-        univ_mask2_size,
-        univ_natom_max,
-	index_start, index_end, max_iy_natom,
-	density,
-	cutoff2,
-        system_x, system_y, system_z );
-    /* */
-    num_block = def_dim3;
-    num_thread = def_dim3;
-    num_thread.x = 32;
-    num_thread.y = 32;
-    kern_compute_energy_nonbond_table_linear_univ_energy_sum<<< num_block, num_thread, 0, stream[0] >>>(
-	dev_ene_virial,
-	dev_ene_viri_mid,
-	ncel_local,
-	ncel_max,
-	univ_maxcell,
-	univ_ncell_nonzero);
-
+  kern_compute_energy_nonbond_table_linear_univ_energy_sum
+  <<<num_block, num_thread, 0, stream[0]>>>
+  (
+    dev_ene_virial,
+    dev_ene_viri_mid,
+    ncel_local,
+    ncel_max,
+    univ_maxcell,
+    univ_ncell_nonzero
+  );
 }
 
 
