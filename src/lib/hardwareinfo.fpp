@@ -568,12 +568,14 @@ contains
         if (ret /= 0) then
           call error_msg('get_gpu_info > Error: cannot get gpu device info.')
         end if
+#ifdef CUDAGPU
         ! check compute capability (is >= 3.5 or not)
         if (gpu%major < 3 .or. &
              (gpu%major == 3 .and. gpu%minor < 5)) then
           not_avail = not_avail + 1
           avail_gpus(i) = .false.
         end if
+#endif
       end do
       mycount = mycount - not_avail
       if (not_avail > 0) then
@@ -591,7 +593,12 @@ contains
 
     ! put error if no gpu found
     if (mycount == 0) then
+#ifdef CUDAGPU
       call error_msg('get_gpu_info> CUDA enabled GPU is not available')
+#endif
+#ifdef AMDGPU
+      call error_msg('get_gpu_info> HIP enabled GPU is not available')
+#endif
     endif
 
     call get_local_rank()
