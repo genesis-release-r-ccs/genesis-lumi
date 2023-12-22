@@ -2018,6 +2018,8 @@ contains
 
     integer,         pointer :: ncell, natom(:), id_l2g(:,:)
     integer(iintegers), pointer :: natom_all
+    integer :: length, istatus
+    logical :: trim_name
 
 
     ncell     => domain%num_cell_local
@@ -2069,7 +2071,7 @@ contains
       icntrl(20) = 24                           ! PRETEND TO BE CHARMM24 -JCP
 
       call fdate (date)
-      call getlog(name)
+      call get_environment_variable("USER", name, length, istatus, trim_name)
 
       title(1) = 'REMARKS CREATED BY GENESIS                                                      '
       title(2) = 'REMARKS DATE: ' // date // ' CREATED BY USER: ' // name
@@ -2212,6 +2214,8 @@ contains
 
     integer,         pointer :: ncell, natom(:), id_l2g(:,:)
     integer(iintegers), pointer :: natom_all
+    integer :: length, istatus
+    logical :: trim_name
 
 
     ncell     => domain%num_cell_local
@@ -2261,7 +2265,7 @@ contains
       icntrl(20) = 24                           ! PRETEND TO BE CHARMM24 -JCP
 
       call fdate (date)
-      call getlog(name)
+      call get_environment_variable("USER", name, length, istatus, trim_name)
 
       title(1) = 'REMARKS CREATED BY GENESIS                                                      '
       title(2) = 'REMARKS DATE: ' // date // ' CREATED BY USER: ' // name

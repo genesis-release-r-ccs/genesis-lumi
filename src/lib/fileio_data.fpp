@@ -2885,7 +2885,12 @@ contains
 
 #ifndef KCOMP
     integer(8)               :: ftell
+#if defined(USE_CRAY)
+    integer :: ierr
+    ierr = fseek(unit_no, 0, 2)
+#else
     call fseek(unit_no, 0, 2)
+#endif
     flen = ftell(unit_no)
 #else
     !!inquire(unit_no,flen=flen)
