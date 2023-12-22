@@ -1,18 +1,20 @@
-#!/bin/bash
+#!/bin/bash -e
 #SBATCH --job-name=test
-#SBATCH --account=XXXXXXXXXX
-#SBATCH --time=02:00:00
+#SBATCH --account=Project_462000123
+#SBATCH --time=00:30:00
 #SBATCH --partition=standard-g
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=8
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus-per-node=8
+#SBATCH --exclusive
+#SBATCH -o %x-%j.out
 
-module load PrgEnv-gnu
-module load craype-x86-trento
-module load craype-accel-amd-gfx90a
-module load rocm
-module load cray-libsci
+ml PrgEnv-gnu
+ml craype-x86-trento
+ml craype-accel-amd-gfx90a
+ml rocm
+ml cray-libsci
 
 GENESIS_HOME="$(pwd)/../../"
 GENESIS_PATH="${GENESIS_HOME}/src/spdyn/"
