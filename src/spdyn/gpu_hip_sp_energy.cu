@@ -1509,7 +1509,7 @@ __global__ void kern_compute_energy_nonbond_notable_univ__energyforce_intra_cell
 #undef  id_thread_xx
 #undef  id_thread_xy
 #define num_thread_xx   8
-#define num_thread_xy   4
+#define num_thread_xy   8
 #define id_thread_xx  (id_thread_x / num_thread_xy)
 #define id_thread_xy  (id_thread_x & (num_thread_xy-1))
 
@@ -1609,9 +1609,18 @@ __global__ void kern_compute_energy_nonbond_notable_univ__energyforce_intra_cell
         val_energy_evdw += evdw_temp/2.0;
 
         // update energy/force(:,:,i)
-        WARP_RSUM_12( force_local(1) );
-        WARP_RSUM_12( force_local(2) );
-        WARP_RSUM_12( force_local(3) );
+	force_local(1) += __shfl_xor(force_local(1),1,64);
+	force_local(1) += __shfl_xor(force_local(1),2,64);
+	force_local(1) += __shfl_xor(force_local(1),4,64);
+
+	force_local(2) += __shfl_xor(force_local(2),1,64);
+	force_local(2) += __shfl_xor(force_local(2),2,64);
+	force_local(2) += __shfl_xor(force_local(2),4,64);
+
+	force_local(3) += __shfl_xor(force_local(3),1,64);
+	force_local(3) += __shfl_xor(force_local(3),2,64);
+	force_local(3) += __shfl_xor(force_local(3),4,64);
+
         if ( id_thread_xy == 0 ) {
             if ( force_local(1) != 0.0 ) atomicAdd( &(force(ixx,1)), force_local(1) );
             if ( force_local(2) != 0.0 ) atomicAdd( &(force(ixx,2)), force_local(2) );
@@ -1619,8 +1628,20 @@ __global__ void kern_compute_energy_nonbond_notable_univ__energyforce_intra_cell
         }
     }
 
-    WARP_RSUM_12345 ( val_energy_elec );
-    WARP_RSUM_12345 ( val_energy_evdw );
+    val_energy_elec += __shfl_xor(val_energy_elec, 1,64);
+    val_energy_elec += __shfl_xor(val_energy_elec, 2,64);
+    val_energy_elec += __shfl_xor(val_energy_elec, 4,64);
+    val_energy_elec += __shfl_xor(val_energy_elec, 8,64);
+    val_energy_elec += __shfl_xor(val_energy_elec,16,64);
+    val_energy_elec += __shfl_xor(val_energy_elec,32,64);
+
+    val_energy_evdw += __shfl_xor(val_energy_evdw, 1,64);
+    val_energy_evdw += __shfl_xor(val_energy_evdw, 2,64);
+    val_energy_evdw += __shfl_xor(val_energy_evdw, 4,64);
+    val_energy_evdw += __shfl_xor(val_energy_evdw, 8,64);
+    val_energy_evdw += __shfl_xor(val_energy_evdw,16,64);
+    val_energy_evdw += __shfl_xor(val_energy_evdw,32,64);
+
     if (id_thread_x < 5) {
         int n = id_thread_x + 1;
         if ( n == 1 ) ene_viri_mid(n,index) = val_energy_elec;
@@ -3855,7 +3876,7 @@ __global__ void kern_compute_energy_nonbond_notable_univ__energyforce_inter_cell
 #undef  id_thread_xx
 #undef  id_thread_xy
 #define num_thread_xx   8
-#define num_thread_xy   4
+#define num_thread_xy   8
 #define id_thread_xx  (id_thread_x / num_thread_xy)
 #define id_thread_xy  (id_thread_x & (num_thread_xy-1))
 
@@ -3977,9 +3998,18 @@ __global__ void kern_compute_energy_nonbond_notable_univ__energyforce_inter_cell
                     force_local(3) -= work3;
 
                     // update force_iy(:,iiy) at smem
-                    WARP_RSUM_345( work1 );
-                    WARP_RSUM_345( work2 );
-                    WARP_RSUM_345( work3 );
+		    work1 += __shfl_xor(work1, 8,64);
+		    work1 += __shfl_xor(work1,16,64);
+		    work1 += __shfl_xor(work1,32,64);
+
+		    work2 += __shfl_xor(work2, 8,64);
+		    work2 += __shfl_xor(work2,16,64);
+		    work2 += __shfl_xor(work2,32,64);
+
+		    work3 += __shfl_xor(work3, 8,64);
+		    work3 += __shfl_xor(work3,16,64);
+		    work3 += __shfl_xor(work3,32,64);
+
                     if ( id_thread_xx == 0 ) {
                         force_iy_smem(1,iiy-iiy_s+1) += work1;
                         force_iy_smem(2,iiy-iiy_s+1) += work2;
@@ -3996,9 +4026,18 @@ __global__ void kern_compute_energy_nonbond_notable_univ__energyforce_inter_cell
                 }
 
                 // update force(:,:,i)
-                WARP_RSUM_12( force_local(1) );
-                WARP_RSUM_12( force_local(2) );
-                WARP_RSUM_12( force_local(3) );
+		force_local(1) += __shfl_xor(force_local(1),1,64);
+		force_local(1) += __shfl_xor(force_local(1),2,64);
+		force_local(1) += __shfl_xor(force_local(1),4,64);
+
+		force_local(2) += __shfl_xor(force_local(2),1,64);
+		force_local(2) += __shfl_xor(force_local(2),2,64);
+		force_local(2) += __shfl_xor(force_local(2),4,64);
+
+		force_local(3) += __shfl_xor(force_local(3),1,64);
+		force_local(3) += __shfl_xor(force_local(3),2,64);
+		force_local(3) += __shfl_xor(force_local(3),4,64);
+
                 if ( id_thread_xy == 0 ) {
                     if ( force_local(1) != 0.0 ) atomicAdd( &(force(ixx,1)), force_local(1) );
                     if ( force_local(2) != 0.0 ) atomicAdd( &(force(ixx,2)), force_local(2) );
@@ -4108,9 +4147,18 @@ __global__ void kern_compute_energy_nonbond_notable_univ__energyforce_inter_cell
 		    force_local(2) -= work2;
 		    force_local(3) -= work3;
 
-		    WARP_RSUM_345( work1 );
-		    WARP_RSUM_345( work2 );
-		    WARP_RSUM_345( work3 );
+		    work1 += __shfl_xor(work1, 8,64);
+		    work1 += __shfl_xor(work1,16,64);
+		    work1 += __shfl_xor(work1,32,64);
+
+		    work2 += __shfl_xor(work2, 8,64);
+		    work2 += __shfl_xor(work2,16,64);
+		    work2 += __shfl_xor(work2,32,64);
+
+		    work3 += __shfl_xor(work3, 8,64);
+		    work3 += __shfl_xor(work3,16,64);
+		    work3 += __shfl_xor(work3,32,64);
+
 		    if ( id_thread_xx == 0 ) {
 		        force_iy_smem(1,iiy-iiy_s+1) += work1;
 		        force_iy_smem(2,iiy-iiy_s+1) += work2;
@@ -4128,9 +4176,18 @@ __global__ void kern_compute_energy_nonbond_notable_univ__energyforce_inter_cell
 	        }
 
                 // update force(:,:,i)
-                WARP_RSUM_12( force_local(1) );
-                WARP_RSUM_12( force_local(2) );
-                WARP_RSUM_12( force_local(3) );
+		force_local(1) += __shfl_xor(force_local(1),1,64);
+		force_local(1) += __shfl_xor(force_local(1),2,64);
+		force_local(1) += __shfl_xor(force_local(1),4,64);
+
+		force_local(2) += __shfl_xor(force_local(2),1,64);
+		force_local(2) += __shfl_xor(force_local(2),2,64);
+		force_local(2) += __shfl_xor(force_local(2),4,64);
+
+		force_local(3) += __shfl_xor(force_local(3),1,64);
+		force_local(3) += __shfl_xor(force_local(3),2,64);
+		force_local(3) += __shfl_xor(force_local(3),4,64);
+
                 if ( id_thread_xy == 0 ) {
                     if ( force_local(1) != 0.0 ) atomicAdd( &(force(ixx,1)), force_local(1) );
                     if ( force_local(2) != 0.0 ) atomicAdd( &(force(ixx,2)), force_local(2) );
@@ -4157,11 +4214,41 @@ __global__ void kern_compute_energy_nonbond_notable_univ__energyforce_inter_cell
     sumval(4) *= __ldg(&cell_move(2,j,i))*system_y;  // virial(2)
     sumval(5) *= __ldg(&cell_move(3,j,i))*system_z;  // virial(3)
 
-    WARP_RSUM_12345( sumval(1) );  // elec
-    WARP_RSUM_12345( sumval(2) );  // evdw
-    WARP_RSUM_12345( sumval(3) );  // virial(1)
-    WARP_RSUM_12345( sumval(4) );  // virial(2)
-    WARP_RSUM_12345( sumval(5) );  // virial(3)
+    sumval(1) += __shfl_xor(sumval(1), 1,64);
+    sumval(1) += __shfl_xor(sumval(1), 2,64);
+    sumval(1) += __shfl_xor(sumval(1), 4,64);
+    sumval(1) += __shfl_xor(sumval(1), 8,64);
+    sumval(1) += __shfl_xor(sumval(1),16,64);
+    sumval(1) += __shfl_xor(sumval(1),32,64);
+
+    sumval(2) += __shfl_xor(sumval(2), 1,64);
+    sumval(2) += __shfl_xor(sumval(2), 2,64);
+    sumval(2) += __shfl_xor(sumval(2), 4,64);
+    sumval(2) += __shfl_xor(sumval(2), 8,64);
+    sumval(2) += __shfl_xor(sumval(2),16,64);
+    sumval(2) += __shfl_xor(sumval(2),32,64);
+
+    sumval(3) += __shfl_xor(sumval(3), 1,64);
+    sumval(3) += __shfl_xor(sumval(3), 2,64);
+    sumval(3) += __shfl_xor(sumval(3), 4,64);
+    sumval(3) += __shfl_xor(sumval(3), 8,64);
+    sumval(3) += __shfl_xor(sumval(3),16,64);
+    sumval(3) += __shfl_xor(sumval(3),32,64);
+
+    sumval(4) += __shfl_xor(sumval(4), 1,64);
+    sumval(4) += __shfl_xor(sumval(4), 2,64);
+    sumval(4) += __shfl_xor(sumval(4), 4,64);
+    sumval(4) += __shfl_xor(sumval(4), 8,64);
+    sumval(4) += __shfl_xor(sumval(4),16,64);
+    sumval(4) += __shfl_xor(sumval(4),32,64);
+
+    sumval(5) += __shfl_xor(sumval(5), 1,64);
+    sumval(5) += __shfl_xor(sumval(5), 2,64);
+    sumval(5) += __shfl_xor(sumval(5), 4,64);
+    sumval(5) += __shfl_xor(sumval(5), 8,64);
+    sumval(5) += __shfl_xor(sumval(5),16,64);
+    sumval(5) += __shfl_xor(sumval(5),32,64);
+
     if (id_thread_x < 5) {
         int n = id_thread_x + 1;
         ene_viri_mid(n,index) = sumval(n);
@@ -7491,8 +7578,8 @@ void gpu_launch_compute_energy_nonbond_notable_univ(
     index_start = 1;
     index_end  = ncel_local;
     num_thread = def_dim3;
-    num_thread.x = 32; num_thread.y = 4;
-    assert( num_thread.x == 32 );
+    num_thread.x = 64; num_thread.y = 4;
+    assert( num_thread.x == 64 );
     assert( num_thread.y ==  4 );
     num_block = def_dim3;
     num_block.x = DIVCEIL((index_end - index_start + 1), num_thread.y);
@@ -7543,8 +7630,8 @@ void gpu_launch_compute_energy_nonbond_notable_univ(
     index_start = ncel_local + 1;
     index_end = univ_ncell_nonzero;
     num_thread = def_dim3;
-    num_thread.x = 32; num_thread.y = 4;  /* do not change */
-    assert( num_thread.x == 32 );
+    num_thread.x = 64; num_thread.y = 4;  /* do not change */
+    assert( num_thread.x == 64 );
     assert( num_thread.y ==  4 );
     num_block = def_dim3;
     num_block.x = DIVCEIL((index_end - index_start + 1), num_thread.y);
