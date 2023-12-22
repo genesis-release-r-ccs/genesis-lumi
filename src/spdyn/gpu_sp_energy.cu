@@ -4496,87 +4496,86 @@ __global__ void kern_compute_energy_nonbond_notable_univ__energyforce_inter_cell
 
 
 
-__global__ void kern_compute_energy_nonbond_table_linear_univ_energy_sum(
-    double       *_ene_virial,
-    const double *_ene_viri_mid,
-    int          ncel_local,
-    int          ncel_max,
-    int          univ_maxcell,
-    int          univ_ncell_nonzero
-    )
-{
-    const int  num_thread_x = blockDim.x;
-    const int  num_thread_y = blockDim.y;
-    const int  id_thread_x = threadIdx.x;
-    const int  id_thread_y = threadIdx.y;
-
-    const int num_thread   = ( blockDim.x * blockDim.y );
-    const int id_thread    = ( threadIdx.x + blockDim.x * threadIdx.y );
-
-    __shared__ double _ene_virial_smem[5*32];
 #define ene_virial_smem(Y,Z)  _ene_virial_smem[CALIDX2((Y)-1,5, (Z)-1,32)]
+__global__
+void kern_compute_energy_nonbond_table_linear_univ_energy_sum
+(
+        double* _ene_virial,
+  const double* _ene_viri_mid,
+        int     univ_ncell_nonzero
+)
+{
+  const int  num_thread_x = blockDim.x;
+  const int  num_thread_y = blockDim.y;
+  const int  id_thread_x = threadIdx.x;
+  const int  id_thread_y = threadIdx.y;
 
-    double energy_elec = 0.0;
-    double energy_evdw = 0.0;
-    double _virial[3];
-    virial(1) = 0.0;
-    virial(2) = 0.0;
-    virial(3) = 0.0;
+  const int num_thread = (blockDim.x * blockDim.y);
+  const int id_thread  = (threadIdx.x + blockDim.x * threadIdx.y);
 
-    int ij;
-    for ( ij = id_thread+1 ; ij <= univ_ncell_nonzero ; ij += num_thread ) {
-       energy_elec += ene_viri_mid(1,ij);
-       energy_evdw += ene_viri_mid(2,ij);
-       virial(1)   += ene_viri_mid(3,ij);
-       virial(2)   += ene_viri_mid(4,ij);
-       virial(3)   += ene_viri_mid(5,ij);
+  __shared__ double _ene_virial_smem[5*32];
+
+  double energy_elec = 0.0;
+  double energy_evdw = 0.0;
+  double _virial[3];
+  virial(1) = 0.0;
+  virial(2) = 0.0;
+  virial(3) = 0.0;
+
+  int ij;
+  for (ij = id_thread+1 ; ij <= univ_ncell_nonzero ; ij += num_thread) {
+    energy_elec += ene_viri_mid(1,ij);
+    energy_evdw += ene_viri_mid(2,ij);
+    virial(1)   += ene_viri_mid(3,ij);
+    virial(2)   += ene_viri_mid(4,ij);
+    virial(3)   += ene_viri_mid(5,ij);
+  }
+
+  int width;
+  int mask;
+  width = num_thread_x;
+  for (mask = 1 ; mask < width ; mask *=2) {
+    energy_elec += __shfl_xor(energy_elec, mask, width);
+    energy_evdw += __shfl_xor(energy_evdw, mask, width);
+    virial(1)   += __shfl_xor(virial(1),   mask, width);
+    virial(2)   += __shfl_xor(virial(2),   mask, width);
+    virial(3)   += __shfl_xor(virial(3),   mask, width);
+  }
+
+  if (id_thread_x == 0) {
+    ene_virial_smem(1,id_thread_y+1) = energy_elec;
+    ene_virial_smem(2,id_thread_y+1) = energy_evdw;
+    ene_virial_smem(3,id_thread_y+1) = virial(1);
+    ene_virial_smem(4,id_thread_y+1) = virial(2);
+    ene_virial_smem(5,id_thread_y+1) = virial(3);
+  }
+
+  __syncthreads();
+
+  if ( id_thread_y == 0 ) {
+    energy_elec = ene_virial_smem(1,id_thread_x+1);
+    energy_evdw = ene_virial_smem(2,id_thread_x+1);
+    virial(1)   = ene_virial_smem(3,id_thread_x+1);
+    virial(2)   = ene_virial_smem(4,id_thread_x+1);
+    virial(3)   = ene_virial_smem(5,id_thread_x+1);
+
+    width = num_thread_y;
+    for ( mask = 1 ; mask < width ; mask *= 2) {
+      energy_elec += __shfl_xor(energy_elec, mask, width);
+      energy_evdw += __shfl_xor(energy_evdw, mask, width);
+      virial(1)   += __shfl_xor(virial(1),   mask, width);
+      virial(2)   += __shfl_xor(virial(2),   mask, width);
+      virial(3)   += __shfl_xor(virial(3),   mask, width);
     }
 
-    int width;
-    int mask;
-    width = num_thread_x;
-    for ( mask = 1 ; mask < width ; mask *=2 ) {
-       energy_elec += __shfl_xor(energy_elec, mask, width);
-       energy_evdw += __shfl_xor(energy_evdw, mask, width);
-       virial(1)   += __shfl_xor(virial(1),   mask, width);
-       virial(2)   += __shfl_xor(virial(2),   mask, width);
-       virial(3)   += __shfl_xor(virial(3),   mask, width);
+    if (id_thread_x == 0 ) {
+      ene_virial(1) += energy_elec;
+      ene_virial(2) += energy_evdw;
+      ene_virial(3) += virial(1);
+      ene_virial(4) += virial(2);
+      ene_virial(5) += virial(3);
     }
-
-    if ( id_thread_x == 0 ) {
-       ene_virial_smem(1,id_thread_y+1) = energy_elec;
-       ene_virial_smem(2,id_thread_y+1) = energy_evdw;
-       ene_virial_smem(3,id_thread_y+1) = virial(1);
-       ene_virial_smem(4,id_thread_y+1) = virial(2);
-       ene_virial_smem(5,id_thread_y+1) = virial(3);
-    }
-
-    __syncthreads();
-
-    if ( id_thread_y == 0 ) {
-       energy_elec = ene_virial_smem(1,id_thread_x+1);
-       energy_evdw = ene_virial_smem(2,id_thread_x+1);
-       virial(1)   = ene_virial_smem(3,id_thread_x+1);
-       virial(2)   = ene_virial_smem(4,id_thread_x+1);
-       virial(3)   = ene_virial_smem(5,id_thread_x+1);
-
-       width = num_thread_y;
-       for ( mask = 1 ; mask < width ; mask *= 2) {
-           energy_elec += __shfl_xor(energy_elec, mask, width);
-           energy_evdw += __shfl_xor(energy_evdw, mask, width);
-           virial(1)   += __shfl_xor(virial(1),   mask, width);
-           virial(2)   += __shfl_xor(virial(2),   mask, width);
-           virial(3)   += __shfl_xor(virial(3),   mask, width);
-       }
-
-       if (id_thread_x == 0 ) {
-           ene_virial(1) += energy_elec;
-           ene_virial(2) += energy_evdw;
-           ene_virial(3) += virial(1);
-           ene_virial(4) += virial(2);
-           ene_virial(5) += virial(3);
-       }
-    }
+  }
 }
 
 
@@ -6720,8 +6719,6 @@ void gpu_launch_compute_energy_nonbond_table_linear_univ
         REAL*   _force,               // ( 1:atom_domain, 1:3 )
         double* _ene_virial,
   const char*   _cell_move,           // ( 1:3, 1:ncel_max, 1:ncel_max )
-  const int*    _natom,               // ( 1:ncel_max )
-  const int*    _start_atom,          // ( 1:ncel_max )
   const REAL*   _nonb_lj12,           // ( 1:num_atom_cls, 1:num_atom_cls )
   const REAL*   _nonb_lj6,            // ( 1:num_atom_cls, 1:num_atom_cls )
   const REAL*   _nonb_lj6_factor,     // ( 1:num_atom_cls )
@@ -6854,13 +6851,13 @@ void gpu_launch_compute_energy_nonbond_table_linear_univ
   const int WARP_X = 8;
   const int WARP_Y = 4;
 
-  index_start = 1;
-  index_end  = ncel_local;
-  num_thread = def_dim3;
+  index_start  = 1;
+  index_end    = ncel_local;
+  num_thread   = def_dim3;
   num_thread.x = WARP_X * WARP_Y;
   num_thread.y = 4;
-  num_block = def_dim3;
-  num_block.x = DIVCEIL((index_end - index_start + 1), num_thread.y);
+  num_block    = def_dim3;
+  num_block.x  = DIVCEIL((index_end - index_start + 1), num_thread.y);
 
   CUDA_CALL(cudaStreamWaitEvent(stream[0], event[1], 0));
   CUDA_CALL(cudaStreamWaitEvent(stream[0], event[2], 0));
@@ -6891,13 +6888,13 @@ void gpu_launch_compute_energy_nonbond_table_linear_univ
   );
 
   /* energy/force calculation between different near cells */
-  index_start = ncel_local + 1;
-  index_end = univ_ncell_nonzero;
-  num_thread = def_dim3;
+  index_start  = ncel_local + 1;
+  index_end    = univ_ncell_nonzero;
+  num_thread   = def_dim3;
   num_thread.x = 32;
   num_thread.y = 4;
-  num_block = def_dim3;
-  num_block.x = DIVCEIL((index_end - index_start + 1), num_thread.y);
+  num_block    = def_dim3;
+  num_block.x  = DIVCEIL((index_end - index_start + 1), num_thread.y);
 
   int max_iy_natom = (SMEM_SIZE/sizeof(REAL)/3) / (num_thread.y*NUM_CTA__ENERGYFORCE_INTER_CELL);
   max_iy_natom -= max_iy_natom % 4;
@@ -6943,8 +6940,8 @@ void gpu_launch_compute_energy_nonbond_table_linear_univ
     system_z
   );
 
-  num_block = def_dim3;
-  num_thread = def_dim3;
+  num_block    = def_dim3;
+  num_thread   = def_dim3;
   num_thread.x = 32;
   num_thread.y = 32;
 
@@ -6953,9 +6950,6 @@ void gpu_launch_compute_energy_nonbond_table_linear_univ
   (
     dev_ene_virial,
     dev_ene_viri_mid,
-    ncel_local,
-    ncel_max,
-    univ_maxcell,
     univ_ncell_nonzero
   );
 }
@@ -7212,9 +7206,6 @@ void gpu_launch_compute_energy_nonbond_table_ljpme_univ(
     kern_compute_energy_nonbond_table_linear_univ_energy_sum<<< num_block, num_thread, 0, stream[0] >>>(
 	dev_ene_virial,
 	dev_ene_viri_mid,
-	ncel_local,
-	ncel_max,
-	univ_maxcell,
 	univ_ncell_nonzero);
 
 }
@@ -7471,9 +7462,6 @@ void gpu_launch_compute_energy_nonbond_notable_univ(
     kern_compute_energy_nonbond_table_linear_univ_energy_sum<<< num_block, num_thread, 0, stream[0] >>>(
 	dev_ene_virial,
 	dev_ene_viri_mid,
-	ncel_local,
-	ncel_max,
-	univ_maxcell,
 	univ_ncell_nonzero);
 
 }
@@ -8180,91 +8168,91 @@ void gpu_launch_compute_force_nonbond_notable_univ(
  * wapper function called from fortran subroutine
  */
 extern "C"
-void gpu_launch_compute_energy_nonbond_table_linear_univ_(
-    REAL        *_coord_pbc,           // ( 1:MaxAtom, 1:4, 1:ncel_max )
-    REAL        *_force,               // ( 1:MaxAtom, 1:3, 1:ncell_all )
-    double      *_ene_virial,
-    const char  *_cell_move,           // ( 1:3, 1:ncel_max, 1:ncel_max )
-    const int   *_natom,               // ( 1:ncel_max )
-    const int   *_start_atom,          // ( 1:ncel_max )
-    const REAL  *_nonb_lj12,           // ( 1:num_atom_cls, 1:num_atom_cls )
-    const REAL  *_nonb_lj6,            // ( 1:num_atom_cls, 1:num_atom_cls )
-    const REAL  *_nonb_lj6_factor,     // ( 1:num_atom_cls )
-    const REAL  *_table_ene,           // ( 1:6*cutoff_int )
-    const REAL  *_table_grad,          // ( 1:6*cutoff_int )
-    const int   *_univ_cell_pairlist1, // ( 1:2, 1:univ_maxcell )
-    const char  *_univ_mask2,          // ( 1:univ_mask2_size, 1:univ_ncell_near)
-    const int   *_univ_ix_natom,       // ( 1:univ_maxcell1 )
-    const uchar *_univ_ix_list,        // ( 1:MaxAtom, 1:univ_maxcell1 )
-    const int   *_univ_iy_natom,       // ( 1:univ_maxcell1 )
-    const uchar *_univ_iy_list,        // ( 1:MaxAtom, 1:univ_maxcell1 )
-    const int   *_univ_ij_sort_list,   // ( 1:univ_maxcell1 )
-    const char  *_virial_check,        // ( 1:ncel_max, 1:ncel_max)
-    int  *_atom_domain,
-    int  *_MaxAtom,
-    int  *_MaxAtomCls,
-    int  *_num_atom_cls,
-    int  *_ncel_local,
-    int  *_ncel_bound,
-    int  *_ncel_max,
-    int  *_cutoff_int,
-    int  *_univ_maxcell,
-    int  *_univ_maxcell1,
-    int  *_univ_ncell_nonzero,
-    int  *_univ_ncell_near,
-    int  *_univ_update,
-    int  *_univ_mask2_size,
-    int  *_univ_natom_max,
-    int  *_maxcell,
-    REAL *_density,
-    REAL *_cutoff2,
-    REAL *_system_x,
-    REAL *_system_y,
-    REAL *_system_z
-    )
+void gpu_launch_compute_energy_nonbond_table_linear_univ_
+(
+        REAL*   _coord_pbc,           // ( 1:MaxAtom, 1:4, 1:ncel_max )
+        REAL*   _force,               // ( 1:MaxAtom, 1:3, 1:ncell_all )
+        double* _ene_virial,
+  const char*   _cell_move,           // ( 1:3, 1:ncel_max, 1:ncel_max )
+  const int*    _natom,               // ( 1:ncel_max )
+  const int*    _start_atom,          // ( 1:ncel_max )
+  const REAL*   _nonb_lj12,           // ( 1:num_atom_cls, 1:num_atom_cls )
+  const REAL*   _nonb_lj6,            // ( 1:num_atom_cls, 1:num_atom_cls )
+  const REAL*   _nonb_lj6_factor,     // ( 1:num_atom_cls )
+  const REAL*   _table_ene,           // ( 1:6*cutoff_int )
+  const REAL*   _table_grad,          // ( 1:6*cutoff_int )
+  const int*    _univ_cell_pairlist1, // ( 1:2, 1:univ_maxcell )
+  const char*   _univ_mask2,          // ( 1:univ_mask2_size, 1:univ_ncell_near)
+  const int*    _univ_ix_natom,       // ( 1:univ_maxcell1 )
+  const uchar*  _univ_ix_list,        // ( 1:MaxAtom, 1:univ_maxcell1 )
+  const int*    _univ_iy_natom,       // ( 1:univ_maxcell1 )
+  const uchar*  _univ_iy_list,        // ( 1:MaxAtom, 1:univ_maxcell1 )
+  const int*    _univ_ij_sort_list,   // ( 1:univ_maxcell1 )
+  const char*   _virial_check,        // ( 1:ncel_max, 1:ncel_max)
+        int*    _atom_domain,
+        int*    _MaxAtom,
+        int*    _MaxAtomCls,
+        int*    _num_atom_cls,
+        int*    _ncel_local,
+        int*    _ncel_bound,
+        int*    _ncel_max,
+        int*    _cutoff_int,
+        int*    _univ_maxcell,
+        int*    _univ_maxcell1,
+        int*    _univ_ncell_nonzero,
+        int*    _univ_ncell_near,
+        int*    _univ_update,
+        int*    _univ_mask2_size,
+        int*    _univ_natom_max,
+        int*    _maxcell,
+        REAL*   _density,
+        REAL*   _cutoff2,
+        REAL*   _system_x,
+        REAL*   _system_y,
+        REAL*   _system_z
+)
 {
-    gpu_init();
+  gpu_init();
 
-    gpu_launch_compute_energy_nonbond_table_linear_univ(
-        _coord_pbc,
-        _force,
-        _ene_virial,
-        _cell_move,
-        _natom,
-        _start_atom,
-        _nonb_lj12,
-        _nonb_lj6,
-        _nonb_lj6_factor,
-        _table_ene,
-        _table_grad,
-        _univ_cell_pairlist1,
-        _univ_mask2,
-        _univ_ix_natom,
-        _univ_ix_list,
-        _univ_iy_natom,
-        _univ_iy_list,
-        _univ_ij_sort_list,
-        _virial_check,
-        *_atom_domain,
-        *_MaxAtom,
-        *_MaxAtomCls,
-        *_num_atom_cls,
-        *_ncel_local,
-        *_ncel_bound,
-        *_ncel_max,
-        *_cutoff_int,
-        *_univ_maxcell,
-        *_univ_maxcell1,
-        *_univ_ncell_nonzero,
-        *_univ_ncell_near,
-        *_univ_update,
-        *_univ_mask2_size,
-        *_univ_natom_max,
-        *_maxcell,
-        *_density,
-        *_cutoff2,
-        *_system_x, *_system_y, *_system_z
-        );
+  gpu_launch_compute_energy_nonbond_table_linear_univ
+  (
+    _coord_pbc,
+    _force,
+    _ene_virial,
+    _cell_move,
+    _nonb_lj12,
+    _nonb_lj6,
+    _nonb_lj6_factor,
+    _table_ene,
+    _table_grad,
+    _univ_cell_pairlist1,
+    _univ_mask2,
+    _univ_ix_natom,
+    _univ_ix_list,
+    _univ_iy_natom,
+    _univ_iy_list,
+    _univ_ij_sort_list,
+    _virial_check,
+    *_atom_domain,
+    *_MaxAtom,
+    *_MaxAtomCls,
+    *_num_atom_cls,
+    *_ncel_local,
+    *_ncel_bound,
+    *_ncel_max,
+    *_cutoff_int,
+    *_univ_maxcell,
+    *_univ_maxcell1,
+    *_univ_ncell_nonzero,
+    *_univ_ncell_near,
+    *_univ_update,
+    *_univ_mask2_size,
+    *_univ_natom_max,
+    *_maxcell,
+    *_density,
+    *_cutoff2,
+    *_system_x, *_system_y, *_system_z
+  );
 }
 
 extern "C"
@@ -9588,9 +9576,6 @@ void gpu_launch_compute_energy_nonbond_table_linear_univ_fep(
     kern_compute_energy_nonbond_table_linear_univ_energy_sum<<< num_block, num_thread, 0, stream[0] >>>(
 	dev_ene_virial,
 	dev_ene_viri_mid,
-	ncel_local,
-	ncel_max,
-	univ_maxcell,
 	univ_ncell_nonzero);
 
 }
@@ -10313,9 +10298,6 @@ void gpu_launch_compute_energy_nonbond_notable_univ_fep(
     kern_compute_energy_nonbond_table_linear_univ_energy_sum<<< num_block, num_thread, 0, stream[0] >>>(
 	dev_ene_virial,
 	dev_ene_viri_mid,
-	ncel_local,
-	ncel_max,
-	univ_maxcell,
 	univ_ncell_nonzero);
 
 }
