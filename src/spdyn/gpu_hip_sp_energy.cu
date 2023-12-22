@@ -1863,7 +1863,7 @@ __global__ void kern_compute_force_nonbond_table_linear_univ__force_intra_cell(
 #undef  id_thread_xx
 #undef  id_thread_xy
 #define num_thread_xx   8
-#define num_thread_xy   4
+#define num_thread_xy   8
 #define id_thread_xx  (id_thread_x / num_thread_xy)
 #define id_thread_xy  (id_thread_x & (num_thread_xy-1))
 
@@ -1950,9 +1950,18 @@ __global__ void kern_compute_force_nonbond_table_linear_univ__force_intra_cell(
         }
 
 	// update force(:,:,i)
-	WARP_RSUM_12( force_local(1) );
-	WARP_RSUM_12( force_local(2) );
-	WARP_RSUM_12( force_local(3) );
+	force_local(1) += __shfl_xor(force_local(1),1,64);
+	force_local(1) += __shfl_xor(force_local(1),2,64);
+	force_local(1) += __shfl_xor(force_local(1),4,64);
+
+	force_local(2) += __shfl_xor(force_local(2),1,64);
+	force_local(2) += __shfl_xor(force_local(2),2,64);
+	force_local(2) += __shfl_xor(force_local(2),4,64);
+
+	force_local(3) += __shfl_xor(force_local(3),1,64);
+	force_local(3) += __shfl_xor(force_local(3),2,64);
+	force_local(3) += __shfl_xor(force_local(3),4,64);
+
   	if ( id_thread_xy == 0 ) {
            if ( force_local(1) != 0.0 ) atomicAdd( &(force(ixx,1)), force_local(1) );
            if ( force_local(2) != 0.0 ) atomicAdd( &(force(ixx,2)), force_local(2) );
@@ -4694,7 +4703,7 @@ __global__ void kern_compute_force_nonbond_table_linear_univ__force_inter_cell(
 #undef  id_thread_xx
 #undef  id_thread_xy
 #define num_thread_xx   8
-#define num_thread_xy   4
+#define num_thread_xy   8
 #define id_thread_xx  (id_thread_x / num_thread_xy)
 #define id_thread_xy  (id_thread_x & (num_thread_xy-1))
 
@@ -4808,9 +4817,18 @@ __global__ void kern_compute_force_nonbond_table_linear_univ__force_inter_cell(
 		    force_local(3) -= work3;
 
 		    // update force_iy(:,iiy) at smem
-		    WARP_RSUM_345( work1 );
-		    WARP_RSUM_345( work2 );
-		    WARP_RSUM_345( work3 );
+		    work1 += __shfl_xor(work1, 8,64);
+		    work1 += __shfl_xor(work1,16,64);
+		    work1 += __shfl_xor(work1,32,64);
+
+		    work2 += __shfl_xor(work2, 8,64);
+		    work2 += __shfl_xor(work2,16,64);
+		    work2 += __shfl_xor(work2,32,64);
+
+		    work3 += __shfl_xor(work3, 8,64);
+		    work3 += __shfl_xor(work3,16,64);
+		    work3 += __shfl_xor(work3,32,64);
+
 		    if ( id_thread_xx == 0 ) {
 		        force_iy_smem(1,iiy-iiy_s+1) += work1;
 		        force_iy_smem(2,iiy-iiy_s+1) += work2;
@@ -4826,9 +4844,18 @@ __global__ void kern_compute_force_nonbond_table_linear_univ__force_inter_cell(
                 }
 
 	        // update force(:,:,i)
-	        WARP_RSUM_12( force_local(1) );
-	        WARP_RSUM_12( force_local(2) );
-	        WARP_RSUM_12( force_local(3) );
+		force_local(1) += __shfl_xor(force_local(1),1,64);
+		force_local(1) += __shfl_xor(force_local(1),2,64);
+		force_local(1) += __shfl_xor(force_local(1),4,64);
+
+		force_local(2) += __shfl_xor(force_local(2),1,64);
+		force_local(2) += __shfl_xor(force_local(2),2,64);
+		force_local(2) += __shfl_xor(force_local(2),4,64);
+
+		force_local(3) += __shfl_xor(force_local(3),1,64);
+		force_local(3) += __shfl_xor(force_local(3),2,64);
+		force_local(3) += __shfl_xor(force_local(3),4,64);
+
 	        if ( id_thread_xy == 0 ) {
 		    if ( force_local(1) != 0.0 ) atomicAdd( &(force(ixx,1)), force_local(1) );
 		    if ( force_local(2) != 0.0 ) atomicAdd( &(force(ixx,2)), force_local(2) );
@@ -4932,9 +4959,18 @@ __global__ void kern_compute_force_nonbond_table_linear_univ__force_inter_cell(
 		    force_local(3) -= work3;
 
 		    // update force_iy(:,iiy) at smem
-		    WARP_RSUM_345( work1 );
-		    WARP_RSUM_345( work2 );
-		    WARP_RSUM_345( work3 );
+		    work1 += __shfl_xor(work1, 8,64);
+		    work1 += __shfl_xor(work1,16,64);
+		    work1 += __shfl_xor(work1,32,64);
+
+		    work2 += __shfl_xor(work2, 8,64);
+		    work2 += __shfl_xor(work2,16,64);
+		    work2 += __shfl_xor(work2,32,64);
+
+		    work3 += __shfl_xor(work3, 8,64);
+		    work3 += __shfl_xor(work3,16,64);
+		    work3 += __shfl_xor(work3,32,64);
+
 		    if ( id_thread_xx == 0 ) {
 			force_iy_smem(1,iiy-iiy_s+1) += work1;
 			force_iy_smem(2,iiy-iiy_s+1) += work2;
@@ -4950,9 +4986,18 @@ __global__ void kern_compute_force_nonbond_table_linear_univ__force_inter_cell(
                 }
 
 		// update force(:,:,i)
-		WARP_RSUM_12( force_local(1) );
-		WARP_RSUM_12( force_local(2) );
-		WARP_RSUM_12( force_local(3) );
+		force_local(1) += __shfl_xor(force_local(1),1,64);
+		force_local(1) += __shfl_xor(force_local(1),2,64);
+		force_local(1) += __shfl_xor(force_local(1),4,64);
+
+		force_local(2) += __shfl_xor(force_local(2),1,64);
+		force_local(2) += __shfl_xor(force_local(2),2,64);
+		force_local(2) += __shfl_xor(force_local(2),4,64);
+
+		force_local(3) += __shfl_xor(force_local(3),1,64);
+		force_local(3) += __shfl_xor(force_local(3),2,64);
+		force_local(3) += __shfl_xor(force_local(3),4,64);
+
 		if ( id_thread_xy == 0 ) {
 		    if ( force_local(1) != 0.0 ) atomicAdd( &(force(ixx,1)), force_local(1) );
 		    if ( force_local(2) != 0.0 ) atomicAdd( &(force(ixx,2)), force_local(2) );
@@ -4978,9 +5023,27 @@ __global__ void kern_compute_force_nonbond_table_linear_univ__force_inter_cell(
 
     // update virial
     if (check_virial != 0) {
-        WARP_RSUM_12345( sumval(1) );  // virial(1)
-        WARP_RSUM_12345( sumval(2) );  // virial(2)
-        WARP_RSUM_12345( sumval(3) );  // virial(3)
+	sumval(1) += __shfl_xor(sumval(1), 1,64);
+	sumval(1) += __shfl_xor(sumval(1), 2,64);
+	sumval(1) += __shfl_xor(sumval(1), 4,64);
+	sumval(1) += __shfl_xor(sumval(1), 8,64);
+	sumval(1) += __shfl_xor(sumval(1),16,64);
+	sumval(1) += __shfl_xor(sumval(1),32,64);
+
+	sumval(2) += __shfl_xor(sumval(2), 1,64);
+	sumval(2) += __shfl_xor(sumval(2), 2,64);
+	sumval(2) += __shfl_xor(sumval(2), 4,64);
+	sumval(2) += __shfl_xor(sumval(2), 8,64);
+	sumval(2) += __shfl_xor(sumval(2),16,64);
+	sumval(2) += __shfl_xor(sumval(2),32,64);
+
+	sumval(3) += __shfl_xor(sumval(3), 1,64);
+	sumval(3) += __shfl_xor(sumval(3), 2,64);
+	sumval(3) += __shfl_xor(sumval(3), 4,64);
+	sumval(3) += __shfl_xor(sumval(3), 8,64);
+	sumval(3) += __shfl_xor(sumval(3),16,64);
+	sumval(3) += __shfl_xor(sumval(3),32,64);
+
         if (id_thread_x < 3) {
             int n = id_thread_x + 1;
             if (n == 1) sumval(n) *= __ldg(&cell_move(n,j,i))*system_x;
@@ -7652,8 +7715,8 @@ void gpu_launch_compute_force_nonbond_table_linear_univ(
     index_s = 1;
     index_e = ncel_local;
     num_thread = def_dim3;
-    num_thread.x = 32; num_thread.y = 4;
-    assert( num_thread.x == 32 );
+    num_thread.x = 64; num_thread.y = 4;
+    assert( num_thread.x == 64 );
     assert( num_thread.y ==  4 );
     num_block = def_dim3;
     num_block.x = DIVCEIL((index_e - index_s + 1), num_thread.y);
@@ -7705,8 +7768,8 @@ void gpu_launch_compute_force_nonbond_table_linear_univ(
     index_s = univ_gpu_start + 1;
     index_e = univ_ncell_nonzero;
     num_thread = def_dim3;
-    num_thread.x = 32; num_thread.y = 4;  /* do not change */
-    assert( num_thread.x == 32 );
+    num_thread.x = 64; num_thread.y = 4;  /* do not change */
+    assert( num_thread.x == 64 );
     assert( num_thread.y ==  4 );
     num_block = def_dim3;
     num_block.x = DIVCEIL((index_e - index_s + 1), num_thread.y);
