@@ -22,18 +22,17 @@ PPDEFS += -DPACKAGE_NAME=\'\'
 PPDEFS += -DPACKAGE_VERSION=\'\'
 PPDEFS += -DVERSION
 PPDEFS += -D_SINGLE
+PPDEFS += -DUSE_CRAY
 PPFLAGS := -traditional-cpp $(PPDEFS)
 
 #-------------------------------------------------------------------------------
 # Fortran compiler
 #-------------------------------------------------------------------------------
 FC := ftn
-FCFLAGS := -fallow-argument-mismatch
-FCFLAGS += -ffree-line-length-none
-FCFLAGS += -ffast-math
-FCFLAGS += -fopenmp
+FCFLAGS := -eZ
+FCFLAGS += -hfp2
+FCFLAGS += -homp
 FCFLAGS += -g
-FCFLAGS += -march=native
 FCFLAGS += -O2
 
 #-------------------------------------------------------------------------------
