@@ -2884,14 +2884,13 @@ contains
 
 
 #ifndef KCOMP
-    integer(8)               :: ftell
 #if defined(USE_CRAY)
-    integer :: ierr
-    ierr = fseek(unit_no, 0, 2)
+    inquire(unit=unit_no,size=flen)
 #else
+    integer(8) :: ftell
     call fseek(unit_no, 0, 2)
-#endif
     flen = ftell(unit_no)
+#endif
 #else
     !!inquire(unit_no,flen=flen)
     call fd_flen_(unit_no, flen)
