@@ -1,10 +1,10 @@
 #!/bin/bash -e
-#SBATCH --job-name=p008_node001
+#SBATCH --job-name=p064_node008
 #SBATCH --account=Project_462000123
 #SBATCH --time=00:30:00
 #SBATCH --partition=standard-g
 #SBATCH --mem=0
-#SBATCH --nodes=1
+#SBATCH --nodes=8
 #SBATCH --ntasks-per-node=8
 #SBATCH --cpus-per-task=7
 #SBATCH --gpus-per-node=8
@@ -31,11 +31,11 @@ CPU_BIND="${CPU_BIND}0x0000fe0000000000"
 export SLURM_CPU_BIND="${CPU_BIND}"
 
 # Warm up
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp
+srun "$(pwd)/../../../../src/spdyn/spdyn" p064.inp
 
 # Benchmark
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node001.mpi08.omp07.gpu08.cray.id000.out
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node001.mpi08.omp07.gpu08.cray.id001.out
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node001.mpi08.omp07.gpu08.cray.id002.out
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node001.mpi08.omp07.gpu08.cray.id003.out
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node001.mpi08.omp07.gpu08.cray.id004.out
+srun "$(pwd)/../../../../src/spdyn/spdyn" p064.inp 2>&1 | tee p064.node008.mpi08.omp07.gpu08.cray.id000.out
+srun "$(pwd)/../../../../src/spdyn/spdyn" p064.inp 2>&1 | tee p064.node008.mpi08.omp07.gpu08.cray.id001.out
+srun "$(pwd)/../../../../src/spdyn/spdyn" p064.inp 2>&1 | tee p064.node008.mpi08.omp07.gpu08.cray.id002.out
+srun "$(pwd)/../../../../src/spdyn/spdyn" p064.inp 2>&1 | tee p064.node008.mpi08.omp07.gpu08.cray.id003.out
+srun "$(pwd)/../../../../src/spdyn/spdyn" p064.inp 2>&1 | tee p064.node008.mpi08.omp07.gpu08.cray.id004.out

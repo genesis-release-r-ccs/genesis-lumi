@@ -1,17 +1,17 @@
 #!/bin/bash -e
-#SBATCH --job-name=p008_node001
+#SBATCH --job-name=p016_node002
 #SBATCH --account=Project_462000123
 #SBATCH --time=00:30:00
 #SBATCH --partition=standard-g
 #SBATCH --mem=0
-#SBATCH --nodes=1
+#SBATCH --nodes=2
 #SBATCH --ntasks-per-node=8
 #SBATCH --cpus-per-task=7
 #SBATCH --gpus-per-node=8
 #SBATCH --exclusive
 #SBATCH -o %x-%j.out
 export PMI_NO_PREINITIALIZE=y
-module load PrgEnv-cray
+module load PrgEnv-gnu
 module load craype-x86-trento
 module load craype-accel-amd-gfx90a
 module load rocm
@@ -31,11 +31,11 @@ CPU_BIND="${CPU_BIND}0x0000fe0000000000"
 export SLURM_CPU_BIND="${CPU_BIND}"
 
 # Warm up
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp
+srun "$(pwd)/../../../../src/spdyn/spdyn" p016.inp
 
 # Benchmark
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node001.mpi08.omp07.gpu08.cray.id000.out
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node001.mpi08.omp07.gpu08.cray.id001.out
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node001.mpi08.omp07.gpu08.cray.id002.out
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node001.mpi08.omp07.gpu08.cray.id003.out
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node001.mpi08.omp07.gpu08.cray.id004.out
+srun "$(pwd)/../../../../src/spdyn/spdyn" p016.inp 2>&1 | tee p016.node002.mpi08.omp07.gpu08.gnu.id000.out
+srun "$(pwd)/../../../../src/spdyn/spdyn" p016.inp 2>&1 | tee p016.node002.mpi08.omp07.gpu08.gnu.id001.out
+srun "$(pwd)/../../../../src/spdyn/spdyn" p016.inp 2>&1 | tee p016.node002.mpi08.omp07.gpu08.gnu.id002.out
+srun "$(pwd)/../../../../src/spdyn/spdyn" p016.inp 2>&1 | tee p016.node002.mpi08.omp07.gpu08.gnu.id003.out
+srun "$(pwd)/../../../../src/spdyn/spdyn" p016.inp 2>&1 | tee p016.node002.mpi08.omp07.gpu08.gnu.id004.out

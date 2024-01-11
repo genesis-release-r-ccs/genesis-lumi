@@ -11,7 +11,7 @@
 #SBATCH --exclusive
 #SBATCH -o %x-%j.out
 export PMI_NO_PREINITIALIZE=y
-module load PrgEnv-cray
+module load PrgEnv-gnu
 module load craype-x86-trento
 module load craype-accel-amd-gfx90a
 module load rocm
@@ -30,8 +30,8 @@ export SLURM_CPU_BIND="${CPU_BIND}"
 srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp
 
 # Benchmark
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node002.mpi04.omp14.gpu04.cray.id000.out
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node002.mpi04.omp14.gpu04.cray.id001.out
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node002.mpi04.omp14.gpu04.cray.id002.out
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node002.mpi04.omp14.gpu04.cray.id003.out
-srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node002.mpi04.omp14.gpu04.cray.id004.out
+srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node002.mpi04.omp14.gpu04.gnu.id000.out
+srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node002.mpi04.omp14.gpu04.gnu.id001.out
+srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node002.mpi04.omp14.gpu04.gnu.id002.out
+srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node002.mpi04.omp14.gpu04.gnu.id003.out
+srun "$(pwd)/../../../../src/spdyn/spdyn" p008.inp 2>&1 | tee p008.node002.mpi04.omp14.gpu04.gnu.id004.out
