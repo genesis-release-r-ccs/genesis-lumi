@@ -35,6 +35,7 @@ FCFLAGS := -eZ
 FCFLAGS += -hfp2
 FCFLAGS += -homp
 FCFLAGS += -g
+FCFLAGS += -x dir
 FCFLAGS += -O2
 
 #-------------------------------------------------------------------------------
