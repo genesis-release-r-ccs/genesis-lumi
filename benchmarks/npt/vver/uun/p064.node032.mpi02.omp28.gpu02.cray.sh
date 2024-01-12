@@ -1,7 +1,7 @@
 #!/bin/bash -e
 #SBATCH --job-name=p064_node032
 #SBATCH --account=Project_462000123
-#SBATCH --time=00:30:00
+#SBATCH --time=02:00:00
 #SBATCH --partition=standard-g
 #SBATCH --mem=0
 #SBATCH --nodes=32
