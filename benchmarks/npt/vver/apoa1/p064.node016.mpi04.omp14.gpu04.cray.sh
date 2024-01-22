@@ -10,12 +10,17 @@
 #SBATCH --gpus-per-node=4
 #SBATCH --exclusive
 #SBATCH -o %x-%j.out
+#
 export PMI_NO_PREINITIALIZE=y
-module load PrgEnv-cray
+#module load PrgEnv-cray
 module load craype-x86-trento
 module load craype-accel-amd-gfx90a
-module load rocm
 module load cray-libsci
+#module /psf...
+module load CrayEnv
+module load rocm/5.6.1
+#module load rocm/5.6.1
+#module li
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export OMP_PROC_BIND=true
 export OMP_PLACES=cores

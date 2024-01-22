@@ -13,7 +13,8 @@
 ml PrgEnv-gnu
 ml craype-x86-trento
 ml craype-accel-amd-gfx90a
-ml rocm
+ml CrayEnv
+ml rocm/5.6.1
 ml cray-libsci
 
 GENESIS_HOME="$(pwd)/../../"

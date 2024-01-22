@@ -14,7 +14,8 @@ export PMI_NO_PREINITIALIZE=y
 module load PrgEnv-cray
 module load craype-x86-trento
 module load craype-accel-amd-gfx90a
-module load rocm
+module load CrayEnv
+module load rocm/5.6.1
 module load cray-libsci
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export OMP_PROC_BIND=true
