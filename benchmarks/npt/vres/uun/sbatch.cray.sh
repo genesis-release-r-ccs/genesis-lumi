@@ -1,4 +1,7 @@
 #!/bin/bash -e
+sbatch p004.node001.mpi04.omp14.gpu04.cray.sh
+sbatch p004.node002.mpi02.omp28.gpu02.cray.sh
+sbatch p004.node004.mpi01.omp56.gpu01.cray.sh
 sbatch p008.node001.mpi08.omp07.gpu08.cray.sh
 sbatch p008.node002.mpi04.omp14.gpu04.cray.sh
 sbatch p008.node004.mpi02.omp28.gpu02.cray.sh
