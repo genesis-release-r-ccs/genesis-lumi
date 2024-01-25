@@ -36,7 +36,7 @@ group_tp         =    YES
 
 [BOUNDARY]
 type             =   PBC
-box_size_x       =     1
-box_size_y       =     1
-box_size_z       =     2
+box_size_x       =     2
+box_size_y       =     2
+box_size_z       =     1
 
