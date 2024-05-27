@@ -1,0 +1,44 @@
+;
+;	File 'topol.top' was generated
+;	By user: ctan (1000)
+;	On host: megaminx
+;	At date: Wed Dec  6 16:49:01 2023
+;
+;	This is a standalone topology file
+;
+;	Created by:
+;	                    :-) GROMACS - gmx pdb2gmx, 2023.3 (-:
+;	
+;	Executable:   /home/ctan/Workspace/gromacs/bin/gmx
+;	Data prefix:  /home/ctan/Workspace/gromacs
+;	Working dir:  /home/ctan/Port/EELDISK/Workspace/2023-12-05_Hero11_TDP43_droplet_AA_reconstruction/11_AA_structure_VAC/03_build_vacuum
+;	Command line:
+;	  gmx pdb2gmx -f merged_system.pdb -o hero11_tdp43_aa.gro -water select -his
+;	Force field was read from the standard GROMACS share directory.
+;
+
+; Include forcefield parameters
+#include "./amber99sbws-stq.ff/forcefield.itp"
+
+; Include chain topologies
+#include "./itp/topol_hero11.itp"
+#include "./itp/topol_tdp43.itp"
+
+; Include water topology
+#include "./amber99sbws-stq.ff/tip4p2005s.itp"
+
+; Include topology for ions
+#include "./amber99sbws-stq.ff/ions.itp"
+
+[ system ]
+; Name
+Protein in water
+
+[ molecules ]
+; Compound        #mols
+hero11  21
+tdp43   485
+
+SOL         3774258
+NA               11292
+CL               13230
