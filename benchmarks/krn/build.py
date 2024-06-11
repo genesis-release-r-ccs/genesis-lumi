@@ -25,6 +25,7 @@ class Electrostatic(enum.Enum):
 
 
 class PMEScheme(enum.Enum):
+    AUTOSELECT = "AUTOSELECT"
     OPT_1DALLTOALL = "OPT_1DALLTOALL"
     OPT_2DALLTOALL = "OPT_2DALLTOALL"
     NOOPT_1DALLTOALL = "NOOPT_1DALLTOALL"
@@ -32,6 +33,7 @@ class PMEScheme(enum.Enum):
 
 
 class NonbondKernel(enum.Enum):
+    AUTOSELECT = "AUTOSELECT"
     FUGAKU = "FUGAKU"
     INTEL = "INTEL"
     GENERIC = "GENERIC"
@@ -376,6 +378,7 @@ def build_jobs(
         mpis = toml["job"]["mpis"]
         omps = toml["job"]["omps"]
 
+        job_counter = 0
         for num_nodes in nodes:
             for num_mpis in mpis:
                 if num_nodes * num_mpis != total_domains:
@@ -389,16 +392,14 @@ def build_jobs(
                     new_job.mpis = num_mpis
                     new_job.omps = num_omps
                     new_job.gpus = num_mpis
+                    new_job.job_name = f"{configuration.cfg_name}-{job_counter:04}"
                     new_jobs.append(new_job)
+                    job_counter += 1
 
     jobs_stage2 = copy.deepcopy(new_jobs)
 
-    # Add names to the jobs
-    jobs = jobs_stage2
-    for job_id, job in enumerate(jobs):
-        job.job_name = f"{job_id:04}"
-
     # Return the final jobs
+    jobs = jobs_stage2
     return jobs
 
 
