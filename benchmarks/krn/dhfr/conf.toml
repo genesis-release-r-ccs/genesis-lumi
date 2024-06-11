@@ -1,0 +1,50 @@
+[input]
+prmtopfile = "../../inputs/jac_amber/step3_input.parm7"
+ambcrdfile = "../../inputs/jac_amber/step3_input.rst7"
+rstfile = "../../inputs/jac_amber/equil.rst"
+
+[energy]
+forcefield = "AMBER"
+electrostatic = "PME"
+pme_scheme = ["OPT_1DALLTOALL", "OPT_2DALLTOALL", "NOOPT_1DALLTOALL", "NOOPT_2DALLTOALL"]
+switchdist = 8
+cutoffdist = 8
+pairlistdist = 9.5
+pme_ngrid_x = 48
+pme_ngrid_y = 48
+pme_ngrid_z = 48
+pme_nspline = 4
+nonbond_kernel = ["GENERIC", "FUGAKU", "INTEL"]
+
+[dynamics]
+integrator = "VVER"
+nsteps = 10000
+timestep = 0.002
+eneout_period = 100
+nbupdate_period = 10
+
+[constraints]
+rigid_bond = "YES"
+water_model = "WAT"
+
+[ensemble]
+ensemble = "NPT"
+tpcontrol = "BUSSI"
+pressure = 1.0
+temperature = 300.0
+group_tp = "YES"
+
+[boundary]
+type = "PBC"
+domain_x = [2, 4]
+domain_y = [2, 4]
+domain_z = [1, 2, 4]
+
+[job]
+node_cpus = 56
+compiler = "GNU"
+time = 01:00:00
+bin = "../../../src/spdyn/spdyn"
+nodes = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+mpis = [1, 2, 4, 8]
+omps = [7, 14, 28, 56]

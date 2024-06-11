@@ -1,0 +1,53 @@
+[input]
+topfile = "../../inputs/uun/toppar/top_all36_prot.rtf,../../inputs/uun/toppar/top_all36_na.rtf,../../inputs/uun/toppar/top_all36_lipid.rtf,../../inputs/uun/toppar/top_all36_cgenff.rtf,../../inputs/uun/toppar/top_all36_carb.rtf"
+parfile = "../../inputs/uun/toppar/par_all36_prot.prm,../../inputs/uun/toppar/par_all36_na.prm,../../inputs/uun/toppar/par_all36_carb.prm,../../inputs/uun/toppar/par_all36_lipid.prm,../../inputs/uun/toppar/par_all36_cgenff.prm"
+strfile = "../../inputs/uun/toppar/toppar_water_ions.genesis.str"
+psffile = "../../inputs/uun/uun.psf"
+pdbfile = "../../inputs/uun/uun.pdb"
+rstfile = "../../inputs/uun/uun.rst"
+
+
+[energy]
+forcefield = "CHARMM"
+electrostatic = "PME"
+pme_scheme = ["OPT_1DALLTOALL", "OPT_2DALLTOALL", "NOOPT_1DALLTOALL", "NOOPT_2DALLTOALL"]
+switchdist = 10.0
+cutoffdist = 12.0
+pairlistdist = 13.5
+pme_ngrid_x = 128
+pme_ngrid_y = 128
+pme_ngrid_z = 128
+pme_nspline = 4
+nonbond_kernel = ["GENERIC", "FUGAKU", "INTEL"]
+
+[dynamics]
+integrator = "VVER"
+nsteps = 10000
+timestep = 0.002
+eneout_period = 100
+nbupdate_period = 10
+
+[constraints]
+rigid_bond = "YES"
+
+[ensemble]
+ensemble = "NPT"
+tpcontrol = "BUSSI"
+pressure = 1.0
+temperature = 300.0
+group_tp = "YES"
+
+[boundary]
+type = "PBC"
+domain_x = [2, 4, 8]
+domain_y = [2, 4, 8]
+domain_z = [1, 2, 4, 8]
+
+[job]
+node_cpus = 56
+compiler = "GNU"
+time = 01:00:00
+bin = "../../../src/spdyn/spdyn"
+nodes = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+mpis = [1, 2, 4, 8]
+omps = [7, 14, 28, 56]

@@ -1,9 +1,9 @@
 [input]
-topfile = "../inputs/apoa1/top_all27_prot_lipid.rtf"
-parfile = "../inputs/apoa1/par_all27_prot_lipid.prm"
-psffile = "../inputs/apoa1/apoa1.psf"
-pdbfile = "../inputs/apoa1/apoa1.pdb"
-rstfile = "../inputs/apoa1/apoa1.rst"
+topfile = "../../inputs/apoa1/top_all27_prot_lipid.rtf"
+parfile = "../../inputs/apoa1/par_all27_prot_lipid.prm"
+psffile = "../../inputs/apoa1/apoa1.psf"
+pdbfile = "../../inputs/apoa1/apoa1.pdb"
+rstfile = "../../inputs/apoa1/apoa1.rst"
 
 [energy]
 forcefield = "CHARMM"
@@ -46,7 +46,7 @@ domain_z = [1, 2, 4]
 node_cpus = 56
 compiler = "GNU"
 time = 01:00:00
-bin = "../../src/spdyn/spdyn"
+bin = "../../../src/spdyn/spdyn"
 nodes = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
 mpis = [1, 2, 4, 8]
 omps = [7, 14, 28, 56]
