@@ -38,10 +38,12 @@ group_tp = "YES"
 
 [boundary]
 type = "PBC"
-domains = [[2, 2, 1], [2, 2, 2], [4, 2, 2], [2, 4, 2], [2, 2, 4], [2, 4, 4], [4, 2, 4], [4, 4, 2], [4, 4, 4]]
+domain_x = [2, 4]
+domain_y = [2, 4]
+domain_z = [1, 2, 4]
 
 [job]
-max_cpus = 56
+node_cpus = 56
 compiler = "GNU"
 time = 01:00:00
 bin = "../../src/spdyn/spdyn"

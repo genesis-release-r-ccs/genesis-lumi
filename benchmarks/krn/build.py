@@ -1,6 +1,7 @@
 import argparse
 import copy
 import dataclasses
+import datetime
 import enum
 import typing
 
@@ -163,6 +164,7 @@ class Configuration:
     constraints: ConstraintsBlock = dataclasses.field(default_factory=ConstraintsBlock)
     ensemble: EnsembleBlock = dataclasses.field(default_factory=EnsembleBlock)
     boundary: BoundaryBlock = dataclasses.field(default_factory=BoundaryBlock)
+    cfg_name: typing.Optional[str] = None
 
     def to_string(self):
         string = ""
@@ -172,71 +174,27 @@ class Configuration:
                 string += f"{item.to_string()}\n"
         return string
 
-    def validate_pme(self):
-        assert self.energy is not None
-        assert self.boundary is not None
-
-        scheme = self.energy.pme_scheme
-        ngrid_x = self.energy.pme_ngrid_x
-        ngrid_y = self.energy.pme_ngrid_y
-        ngrid_z = self.energy.pme_ngrid_z
-        nspline = self.energy.pme_nspline
-        domain_x = self.boundary.domain_x
-        domain_y = self.boundary.domain_y
-        domain_z = self.boundary.domain_z
-
-        assert scheme is not None
-        assert ngrid_x is not None
-        assert ngrid_y is not None
-        assert ngrid_z is not None
-        assert nspline is not None
-        assert domain_x is not None
-        assert domain_y is not None
-        assert domain_z is not None
-
-        if scheme == PMEScheme.OPT_1DALLTOALL or scheme == PMEScheme.NOOPT_1DALLTOALL:
-            assert ngrid_x % (2 * domain_x) == 0
-            if domain_z % 2 == 0:
-                assert ngrid_y % (domain_y * domain_z) == 0
-            else:
-                assert ngrid_y % (domain_y * domain_z * 2) == 0
-            assert ngrid_z % (domain_x * domain_z) == 0
-            assert ngrid_z % (domain_y * domain_z) == 0
-
-        if scheme == PMEScheme.OPT_2DALLTOALL or scheme == PMEScheme.NOOPT_2DALLTOALL:
-            assert ngrid_x % (2 * domain_x) == 0
-            if domain_z % 2 == 0:
-                assert ngrid_y % (domain_y * domain_z) == 0
-            else:
-                assert ngrid_y % (domain_y * domain_z * 2) == 0
-            assert ngrid_z % (domain_x * domain_z) == 0
-
-        if scheme == PMEScheme.OPT_1DALLTOALL or scheme == PMEScheme.OPT_2DALLTOALL:
-            assert ngrid_x // domain_x > nspline
-            assert ngrid_y // domain_y > nspline
-            assert ngrid_z // domain_z > nspline
-
 
 @dataclasses.dataclass
 class Job:
-    max_cpus: typing.Optional[int] = None
+    node_cpus: typing.Optional[int] = None
     compiler: typing.Optional[Compiler] = None
-    time: typing.Optional[str] = None
+    time: typing.Optional[datetime.time] = None
     bin: typing.Optional[str] = None
-    inp_name: typing.Optional[str] = None
+    cfg_name: typing.Optional[str] = None
     job_name: typing.Optional[str] = None
     nodes: typing.Optional[int] = None
-    ntasks_per_node: typing.Optional[int] = None
-    cpus_per_task: typing.Optional[int] = None
-    gpus_per_node: typing.Optional[int] = None
+    mpis: typing.Optional[int] = None
+    omps: typing.Optional[int] = None
+    gpus: typing.Optional[int] = None
 
     def to_string(self):
-        assert self.inp_name is not None
+        assert self.cfg_name is not None
         assert self.job_name is not None
         assert self.nodes is not None
-        assert self.ntasks_per_node is not None
-        assert self.cpus_per_task is not None
-        assert self.gpus_per_node is not None
+        assert self.mpis is not None
+        assert self.omps is not None
+        assert self.gpus is not None
         assert self.compiler is not None
         assert self.time is not None
         assert self.bin is not None
@@ -249,9 +207,9 @@ class Job:
         string += "#SBATCH --partition=standard-g\n"
         string += "#SBATCH --mem=0\n"
         string += f"#SBATCH --nodes={self.nodes}\n"
-        string += f"#SBATCH --ntasks-per-node={self.ntasks_per_node}\n"
-        string += f"#SBATCH --cpus-per-task={self.cpus_per_task}\n"
-        string += f"#SBATCH --gpus-per-node={self.gpus_per_node}\n"
+        string += f"#SBATCH --ntasks-per-node={self.mpis}\n"
+        string += f"#SBATCH --cpus-per-task={self.omps}\n"
+        string += f"#SBATCH --gpus-per-node={self.gpus}\n"
         string += "#SBATCH --exclusive\n"
         string += f"#SBATCH -o {self.job_name}.LOG\n"
         string += "export PMI_NO_PREINITIALIZE=y\n"
@@ -269,7 +227,7 @@ class Job:
         string += "export OMP_PROC_BIND=true\n"
         string += "export OMP_PLACES=cores\n"
         string += 'CPU_BIND="mask_cpu:"\n'
-        match self.ntasks_per_node:
+        match self.mpis:
             case 8:
                 string += 'CPU_BIND="${CPU_BIND}0x00fe000000000000,"\n'
                 string += 'CPU_BIND="${CPU_BIND}0xfe00000000000000,"\n'
@@ -294,15 +252,15 @@ class Job:
         string += 'export SLURM_CPU_BIND="${CPU_BIND}"\n'
         string += "\n"
         string += "# Warm up\n"
-        string += f"srun {self.bin} {self.inp_name}.INP\n"
+        string += f"srun {self.bin} {self.cfg_name}.INP\n"
         string += "\n"
         string += "# Benchmark\n"
         for i in range(3):
-            prefix = f"{self.job_name}-{self.nodes:04}-{self.ntasks_per_node:04}-{self.cpus_per_task:04}-{self.gpus_per_node:04}-{i:04}"
+            prefix = f"{self.job_name}-{i:04}"
             stdout = f"{prefix}.OUT"
             stderr = f"{prefix}.ERR"
 
-            string += f"srun {self.bin} {self.inp_name}.INP"
+            string += f"srun {self.bin} {self.cfg_name}.INP"
             string += f" 1> {stdout}"
             string += f" 2> {stderr}"
             string += "\n"
@@ -369,19 +327,79 @@ def build_configurations(toml: dict[str, typing.Any]) -> list[Configuration]:
 
     # Stage 5
     new_configurations: list[Configuration] = []
-    for domain in toml["boundary"]["domains"]:
-        for configuration in configuration_stage4:
-            new_configuration = copy.deepcopy(configuration)
-            new_configuration.boundary.domain_x = domain[0]
-            new_configuration.boundary.domain_y = domain[1]
-            new_configuration.boundary.domain_z = domain[2]
-            new_configurations.append(new_configuration)
+    for domain_x in toml["boundary"]["domain_x"]:
+        for domain_y in toml["boundary"]["domain_y"]:
+            for domain_z in toml["boundary"]["domain_z"]:
+                total_domains = domain_x * domain_y * domain_z
+                if total_domains % 2 != 0:
+                    continue
+                if total_domains < 4:
+                    continue
+                for configuration in configuration_stage4:
+                    new_configuration = copy.deepcopy(configuration)
+                    new_configuration.boundary.domain_x = domain_x
+                    new_configuration.boundary.domain_y = domain_y
+                    new_configuration.boundary.domain_z = domain_z
+                    new_configurations.append(new_configuration)
 
     configuration_stage5 = copy.deepcopy(new_configurations)
 
-    # Return the final configurations
+    # Add names to the configurations
     configurations = configuration_stage5
+    for configuration_id, configuration in enumerate(configurations):
+        configuration.cfg_name = f"{configuration_id:04}"
+
+    # Return the final configurations
     return configurations
+
+
+def build_jobs(
+    toml: dict[str, typing.Any], configurations: list[Configuration]
+) -> list[Job]:
+    job = toml["job"]
+    job = {k: v for k, v in job.items() if not isinstance(v, list)}
+    new_job = Job(**job)
+    job_stage1 = copy.deepcopy(new_job)
+
+    new_jobs: list[Job] = []
+    for configuration in configurations:
+        assert configuration.boundary.domain_x is not None
+        assert configuration.boundary.domain_y is not None
+        assert configuration.boundary.domain_z is not None
+        domain_x = configuration.boundary.domain_x
+        domain_y = configuration.boundary.domain_y
+        domain_z = configuration.boundary.domain_z
+        total_domains = domain_x * domain_y * domain_z
+        total_cpus = job_stage1.node_cpus
+
+        nodes = toml["job"]["nodes"]
+        mpis = toml["job"]["mpis"]
+        omps = toml["job"]["omps"]
+
+        for num_nodes in nodes:
+            for num_mpis in mpis:
+                if num_nodes * num_mpis != total_domains:
+                    continue
+                for num_omps in omps:
+                    if num_mpis * num_omps != total_cpus:
+                        continue
+                    new_job = copy.deepcopy(job_stage1)
+                    new_job.cfg_name = configuration.cfg_name
+                    new_job.nodes = num_nodes
+                    new_job.mpis = num_mpis
+                    new_job.omps = num_omps
+                    new_job.gpus = num_mpis
+                    new_jobs.append(new_job)
+
+    jobs_stage2 = copy.deepcopy(new_jobs)
+
+    # Add names to the jobs
+    jobs = jobs_stage2
+    for job_id, job in enumerate(jobs):
+        job.job_name = f"{job_id:04}"
+
+    # Return the final jobs
+    return jobs
 
 
 def main():
@@ -396,56 +414,18 @@ def main():
     # Build configurations
     configurations = build_configurations(toml)
 
-    print(toml)
-    print(configurations)
+    # Build jobs
+    jobs = build_jobs(toml, configurations)
 
+    # Write configurations
+    for configuration in configurations:
+        with open(f"{configuration.cfg_name}.INP", "w") as file:
+            file.write(configuration.to_string())
 
-#    compiler = Compiler.GNU if args.compiler == "GNU" else Compiler.CRAY
-#
-#    for cfg_idx, configuration in enumerate(configurations):
-#        assert configuration.job_time is not None
-#        assert configuration.job_bin is not None
-#
-#        with open(f"{cfg_idx:04}.INP", "w") as file:
-#            file.write(configuration.to_string())
-#
-#        boundary = configuration.boundary
-#        assert boundary is not None
-#
-#        domain_x = boundary.domain_x
-#        domain_y = boundary.domain_y
-#        domain_z = boundary.domain_z
-#        assert domain_x is not None
-#        assert domain_y is not None
-#        assert domain_z is not None
-#
-#        ndomains = domain_x * domain_y * domain_z
-#        parallel = PARALLEL[ndomains]
-#
-#        jobs: list[Job] = []
-#        for job_idx, (
-#            nodes,
-#            ntasks_per_node,
-#            cpus_per_task,
-#            gpus_per_node,
-#        ) in enumerate(parallel):
-#            jobs.append(
-#                Job(
-#                    cfg_idx,
-#                    job_idx,
-#                    nodes,
-#                    ntasks_per_node,
-#                    cpus_per_task,
-#                    gpus_per_node,
-#                    compiler,
-#                    configuration.job_time,
-#                    configuration.job_bin,
-#                )
-#            )
-#
-#        for job in jobs:
-#            with open(f"{cfg_idx:04}-{job.job_idx:04}.LUMI.SLURM", "w") as file:
-#                file.write(job.to_string())
+    # Write jobs
+    for job in jobs:
+        with open(f"{job.job_name}.SLURM", "w") as file:
+            file.write(job.to_string())
 
 
 if __name__ == "__main__":
