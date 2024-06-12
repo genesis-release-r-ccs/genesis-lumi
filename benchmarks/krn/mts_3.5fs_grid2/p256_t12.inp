@@ -1,7 +1,7 @@
 [INPUT]
-grotopfile                = ./topol.top
-grocrdfile                = ./crd/hero11_tdp43_solv_ions_em1.gro
-rstfile                   = ./hero11_tdp43_npt3.rst
+grotopfile                = ../topol.top
+grocrdfile                = ../crd/hero11_tdp43_solv_ions_em1.gro
+rstfile                   = ../hero11_tdp43_npt3.rst
 
 # [OUTPUT]
 # dcdfile                   = hero11_tdp43_benchmark.dcd
@@ -13,15 +13,23 @@ electrostatic             = PME
 switchdist                = 10.0     # switch distance
 cutoffdist                = 10.0     # cutoff distance
 pairlistdist              = 12.0     # pair-list distance
+pme_ngrid_x               = 256
+pme_ngrid_y               = 256
+pme_ngrid_z               = 256
+pme_scheme                = opt_1dalltoall
+pme_nspline               = 8
 
 [DYNAMICS]
-integrator                = VVER
-nsteps                    = 5000
-timestep                  = 0.002
+integrator                = VRES
+nsteps                    = 4800
+timestep                  = 0.0035
 eneout_period             = 100
 # crdout_period             = 5000
 # rstout_period             = 5000
 stoptr_period             = 10
+elec_long_period          = 2
+thermostat_period         = 6
+barostat_period           = 6
 
 [CONSTRAINTS]
 rigid_bond                = YES
@@ -39,3 +47,6 @@ tau_p                     = 10.0
 
 [BOUNDARY]
 type                      = PBC
+domain_x                  = 8
+domain_y                  = 8
+domain_z                  = 4
