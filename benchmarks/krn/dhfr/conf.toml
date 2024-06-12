@@ -6,7 +6,7 @@ rstfile = "../../inputs/jac_amber/equil.rst"
 [energy]
 forcefield = "AMBER"
 electrostatic = "PME"
-pme_scheme = ["OPT_1DALLTOALL", "OPT_2DALLTOALL", "NOOPT_1DALLTOALL", "NOOPT_2DALLTOALL"]
+pme_scheme = ["AUTOSELECT"]
 switchdist = 8
 cutoffdist = 8
 pairlistdist = 9.5
