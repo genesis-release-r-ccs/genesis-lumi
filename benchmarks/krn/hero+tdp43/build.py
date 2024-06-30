@@ -41,6 +41,7 @@ class NonbondKernel(enum.Enum):
 
 class Integrator(enum.Enum):
     VVER = "VVER"
+    VRES = "VRES"
 
 
 class Ensemble(enum.Enum):
@@ -128,6 +129,7 @@ class DynamicsBlock(Block):
     nsteps: typing.Optional[int] = None
     timestep: typing.Optional[float] = None
     eneout_period: typing.Optional[int] = None
+    stoptr_period: typing.Optional[int] = None
     nbupdate_period: typing.Optional[int] = None
     elec_long_period: typing.Optional[int] = None
     thermostat_period: typing.Optional[int] = None
@@ -141,6 +143,9 @@ class DynamicsBlock(Block):
 class ConstraintsBlock(Block):
     rigid_bond: typing.Optional[YesNo] = None
     water_model: typing.Optional[str] = None
+    hydrogen_type: typing.Optional[str] = None
+    fast_water: typing.Optional[YesNo] = None
+    hydrogen_mass_upper_bound: typing.Optional[float] = None
 
 
 @dataclasses.dataclass
@@ -151,6 +156,7 @@ class EnsembleBlock(Block):
     temperature: typing.Optional[float] = None
     group_tp: typing.Optional[YesNo] = None
     gamma_t: typing.Optional[float] = None
+    tau_p: typing.Optional[float] = None
 
 
 @dataclasses.dataclass
