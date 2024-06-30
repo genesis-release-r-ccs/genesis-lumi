@@ -1,0 +1,57 @@
+[input]
+grotopfile = "../../inputs/hero11+tdp43/topol.top"
+grocrdfile = "../../inputs/hero11+tdp43/crd/hero11_tdp43_solv_ions_em1.gro"
+rstfile = "../../inputs/hero11+tdp43/hero11_tdp43_npt3.rst"
+
+[energy]
+forcefield = "GROAMBER"
+electrostatic = "PME"
+switchdist = 10.0
+cutoffdist = 10.0
+pairlistdist = 12.0
+pme_nspline = [4, 6, 8]
+pme_ngrid_x = [256, 384, 512]
+pme_ngrid_y = [256, 384, 512]
+pme_ngrid_z = [256, 384, 512]
+pme_scheme = ["OPT_1DALLTOALL", "OPT_2DALLTOALL", "NOOPT_1DALLTOALL", "NOOPT_2DALLTOALL"]
+nonbond_kernel = ["GENERIC", "FUGAKU", "INTEL"]
+
+[dynamics]
+integrator = ["VVER", "VRES"]
+nsteps = [5000, 4800]
+timestep = [0.0020, 0.0035]
+elec_long_period = [1, 2]
+thermostat_period = [1, 6]
+barostat_period = [1, 6]
+eneout_period = 100
+stoptr_period = 10
+
+[constraints]
+rigid_bond = "YES"
+hydrogen_type = "mass"
+fast_water = "YES"
+water_model = "SOL"
+hydrogen_mass_upper_bound = 2.0
+
+[ensemble]
+ensemble = "NPT"
+tpcontrol = "BUSSI"
+temperature = 300.0
+pressure = 1.0
+tau_p = 10.0
+
+
+[boundary]
+type = "PBC"
+domain_x = [8, 16, 32]
+domain_y = [8, 16, 16]
+domain_z = [4, 8, 16]
+
+[job]
+node_cpus = 56
+compiler = "GNU"
+time = 01:00:00
+bin = "../../../src/spdyn/spdyn"
+nodes = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+mpis = [1, 2, 4, 8]
+omps = [7, 14, 28, 56]

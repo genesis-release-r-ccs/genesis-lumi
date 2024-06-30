@@ -16,18 +16,16 @@ pairlistdist              = 12.0     # pair-list distance
 pme_ngrid_x               = 512
 pme_ngrid_y               = 512
 pme_ngrid_z               = 512
+nonbond_kernel            = intel
 
 [DYNAMICS]
-integrator                = VRES
-nsteps                    = 4800
-timestep                  = 0.0035
+integrator                = VVER
+nsteps                    = 5000
+timestep                  = 0.002
 eneout_period             = 100
 # crdout_period             = 5000
 # rstout_period             = 5000
 stoptr_period             = 10
-elec_long_period          = 2
-thermostat_period         = 6
-barostat_period           = 6
 
 [CONSTRAINTS]
 rigid_bond                = YES
