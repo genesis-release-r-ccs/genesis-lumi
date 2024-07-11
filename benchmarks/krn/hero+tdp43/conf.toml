@@ -9,22 +9,23 @@ electrostatic = "PME"
 switchdist = 10.0
 cutoffdist = 10.0
 pairlistdist = 12.0
-pme_nspline = [4, 8]
+pme_nspline = [8, 4]
 pme_ngrid_x = [256, 512]
 pme_ngrid_y = [256, 512]
 pme_ngrid_z = [256, 512]
-pme_scheme = ["OPT_1DALLTOALL", "OPT_2DALLTOALL", "NOOPT_1DALLTOALL", "NOOPT_2DALLTOALL"]
-nonbond_kernel = ["GENERIC", "FUGAKU", "INTEL"]
+pme_scheme = ["OPT_1DALLTOALL", "OPT_2DALLTOALL"]
+nonbond_kernel = ["INTEL", "GPU"]
 
 [dynamics]
-integrator = ["VVER", "VRES"]
-nsteps = [5000, 4800]
-timestep = [0.0020, 0.0035]
-elec_long_period = [1, 2]
-thermostat_period = [1, 6]
-barostat_period = [1, 6]
-eneout_period = 100
-stoptr_period = 10
+integrator = ["VRES"]
+nsteps = [4800]
+timestep = [0.0035]
+elec_long_period = [2]
+thermostat_period = [6]
+barostat_period = [6]
+nbupdate_period = [6]
+eneout_period = 120
+stoptr_period = 6
 
 [constraints]
 rigid_bond = "YES"

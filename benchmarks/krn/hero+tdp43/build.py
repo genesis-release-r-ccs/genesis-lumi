@@ -37,6 +37,7 @@ class NonbondKernel(enum.Enum):
     FUGAKU = "FUGAKU"
     INTEL = "INTEL"
     GENERIC = "GENERIC"
+    GPU = "GPU"
 
 
 class Integrator(enum.Enum):
@@ -188,6 +189,7 @@ class Configuration:
 
 @dataclasses.dataclass
 class Job:
+    num_jobs: int = 1
     node_cpus: typing.Optional[int] = None
     compiler: typing.Optional[Compiler] = None
     time: typing.Optional[datetime.time] = None
@@ -266,7 +268,7 @@ class Job:
         string += f"srun {self.bin} {self.cfg_name}.INP\n"
         string += "\n"
         string += "# Benchmark\n"
-        for i in range(3):
+        for i in range(self.num_jobs):
             prefix = f"{self.job_name}-{i:04}"
             stdout = f"{prefix}.OUT"
             stderr = f"{prefix}.ERR"
@@ -281,96 +283,83 @@ class Job:
 
 def build_configurations(toml: dict[str, typing.Any]) -> list[Configuration]:
     # Stage 1
-    configuration_stage1 = Configuration()
+    configuration = Configuration()
 
     # Stage 2
-    new_configuration = copy.deepcopy(configuration_stage1)
     input = toml["input"]
     input = {k: v for k, v in input.items() if not isinstance(v, list)}
-    new_configuration.input = InputBlock(**input)
+    configuration.input = InputBlock(**input)
 
     energy = toml["energy"]
     energy = {k: v for k, v in energy.items() if not isinstance(v, list)}
-    new_configuration.energy = EnergyBlock(**energy)
+    configuration.energy = EnergyBlock(**energy)
 
     dynamics = toml["dynamics"]
     dynamics = {k: v for k, v in dynamics.items() if not isinstance(v, list)}
-    new_configuration.dynamics = DynamicsBlock(**dynamics)
+    configuration.dynamics = DynamicsBlock(**dynamics)
 
     constraints = toml["constraints"]
     constraints = {k: v for k, v in constraints.items() if not isinstance(v, list)}
-    new_configuration.constraints = ConstraintsBlock(**constraints)
+    configuration.constraints = ConstraintsBlock(**constraints)
 
     ensemble = toml["ensemble"]
     ensemble = {k: v for k, v in ensemble.items() if not isinstance(v, list)}
-    new_configuration.ensemble = EnsembleBlock(**ensemble)
+    configuration.ensemble = EnsembleBlock(**ensemble)
 
     boundary = toml["boundary"]
     boundary = {k: v for k, v in boundary.items() if not isinstance(v, list)}
-    new_configuration.boundary = BoundaryBlock(**boundary)
-
-    configuration_stage2 = copy.deepcopy(new_configuration)
+    configuration.boundary = BoundaryBlock(**boundary)
 
     # Stage 3
     if "pme_scheme" in toml["energy"]:
         new_configurations: list[Configuration] = []
         for pme_scheme in toml["energy"]["pme_scheme"]:
-            new_configuration = copy.deepcopy(configuration_stage2)
+            new_configuration = copy.deepcopy(configuration)
             new_configuration.energy.pme_scheme = PMEScheme(pme_scheme)
             new_configurations.append(new_configuration)
     else:
-        new_configurations = [copy.deepcopy(configuration_stage2)]
+        new_configurations = [copy.deepcopy(configuration)]
 
-    configuration_stage3 = copy.deepcopy(new_configurations)
+    configurations = copy.deepcopy(new_configurations)
 
     # Stage 4
     if (
         "pme_ngrid_x" in toml["energy"]
         and "pme_ngrid_y" in toml["energy"]
         and "pme_ngrid_z" in toml["energy"]
+        and "pme_nspline" in toml["energy"]
     ):
         new_configurations: list[Configuration] = []
-        for pme_ngrid_x, pme_ngrid_y, pme_ngrid_z in zip(
+        for pme_ngrid_x, pme_ngrid_y, pme_ngrid_z, pme_nspline in zip(
             toml["energy"]["pme_ngrid_x"],
             toml["energy"]["pme_ngrid_y"],
             toml["energy"]["pme_ngrid_z"],
+            toml["energy"]["pme_nspline"],
         ):
-            for configuration in configuration_stage3:
+            for configuration in configurations:
                 new_configuration = copy.deepcopy(configuration)
                 new_configuration.energy.pme_ngrid_x = pme_ngrid_x
                 new_configuration.energy.pme_ngrid_y = pme_ngrid_y
                 new_configuration.energy.pme_ngrid_z = pme_ngrid_z
-                new_configurations.append(new_configuration)
-    else:
-        new_configurations = copy.deepcopy(configuration_stage3)
-
-    configuration_stage4 = copy.deepcopy(new_configurations)
-
-    # Stage 5
-    if "pme_nspline" in toml["energy"]:
-        new_configurations: list[Configuration] = []
-        for pme_nspline in toml["energy"]["pme_nspline"]:
-            for configuration in configuration_stage4:
-                new_configuration = copy.deepcopy(configuration)
                 new_configuration.energy.pme_nspline = pme_nspline
                 new_configurations.append(new_configuration)
     else:
-        new_configurations = copy.deepcopy(configuration_stage4)
+        new_configurations = copy.deepcopy(configurations)
 
-    configuration_stage5 = copy.deepcopy(new_configurations)
+    configurations = copy.deepcopy(new_configurations)
 
-    # Stage 6
+    # Stage 5
     if "nonbond_kernel" in toml["energy"]:
         new_configurations: list[Configuration] = []
         for nonbond_kernel in toml["energy"]["nonbond_kernel"]:
-            for configuration in configuration_stage5:
+            for configuration in configurations:
                 new_configuration = copy.deepcopy(configuration)
                 new_configuration.energy.nonbond_kernel = NonbondKernel(nonbond_kernel)
                 new_configurations.append(new_configuration)
     else:
-        new_configurations = copy.deepcopy(configuration_stage5)
+        new_configurations = copy.deepcopy(configurations)
 
-    configuration_stage6 = copy.deepcopy(new_configurations)
+    configurations = copy.deepcopy(new_configurations)
 
     # Stage 7
     new_configurations: list[Configuration] = []
@@ -382,14 +371,14 @@ def build_configurations(toml: dict[str, typing.Any]) -> list[Configuration]:
                     continue
                 if total_domains < 4:
                     continue
-                for configuration in configuration_stage6:
+                for configuration in configurations:
                     new_configuration = copy.deepcopy(configuration)
                     new_configuration.boundary.domain_x = domain_x
                     new_configuration.boundary.domain_y = domain_y
                     new_configuration.boundary.domain_z = domain_z
                     new_configurations.append(new_configuration)
 
-    configuration_stage7 = copy.deepcopy(new_configurations)
+    configurations = copy.deepcopy(new_configurations)
 
     # Stage 8
     new_configurations: list[Configuration] = []
@@ -400,6 +389,7 @@ def build_configurations(toml: dict[str, typing.Any]) -> list[Configuration]:
         elec_long_period,
         thermostat_period,
         barostat_period,
+        nbupdate_period,
     ) in zip(
         toml["dynamics"]["integrator"],
         toml["dynamics"]["nsteps"],
@@ -407,8 +397,9 @@ def build_configurations(toml: dict[str, typing.Any]) -> list[Configuration]:
         toml["dynamics"]["elec_long_period"],
         toml["dynamics"]["thermostat_period"],
         toml["dynamics"]["barostat_period"],
+        toml["dynamics"]["nbupdate_period"],
     ):
-        for configuration in configuration_stage7:
+        for configuration in configurations:
             new_configuration = copy.deepcopy(configuration)
             new_configuration.dynamics.integrator = Integrator(integrator)
             new_configuration.dynamics.nsteps = nsteps
@@ -416,12 +407,12 @@ def build_configurations(toml: dict[str, typing.Any]) -> list[Configuration]:
             new_configuration.dynamics.elec_long_period = elec_long_period
             new_configuration.dynamics.thermostat_period = thermostat_period
             new_configuration.dynamics.barostat_period = barostat_period
+            new_configuration.dynamics.nbupdate_period = nbupdate_period
             new_configurations.append(new_configuration)
 
-    configuration_stage8 = copy.deepcopy(new_configurations)
+    configurations = copy.deepcopy(new_configurations)
 
     # Add names to the configurations
-    configurations = configuration_stage8
     for configuration_id, configuration in enumerate(configurations):
         configuration.cfg_name = f"{configuration_id:04}"
 
@@ -439,6 +430,7 @@ def build_jobs(
 
     new_jobs: list[Job] = []
     for configuration in configurations:
+        assert configuration.energy.nonbond_kernel is not None
         assert configuration.boundary.domain_x is not None
         assert configuration.boundary.domain_y is not None
         assert configuration.boundary.domain_z is not None
@@ -447,6 +439,10 @@ def build_jobs(
         domain_z = configuration.boundary.domain_z
         total_domains = domain_x * domain_y * domain_z
         total_cpus = job_stage1.node_cpus
+        if configuration.energy.nonbond_kernel == NonbondKernel.GPU:
+            use_gpu = True
+        else:
+            use_gpu = False
 
         nodes = toml["job"]["nodes"]
         mpis = toml["job"]["mpis"]
@@ -467,6 +463,8 @@ def build_jobs(
                     new_job.omps = num_omps
                     new_job.gpus = num_mpis
                     new_job.job_name = f"{configuration.cfg_name}-{job_counter:04}"
+                    assert new_job.bin is not None
+                    new_job.bin += "_gpu" if use_gpu else "_cpu"
                     new_jobs.append(new_job)
                     job_counter += 1
 

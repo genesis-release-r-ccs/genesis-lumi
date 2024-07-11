@@ -36,6 +36,7 @@ FCFLAGS += -homp
 FCFLAGS += -g
 FCFLAGS += -x dir
 FCFLAGS += -O2
+FCFLAGS += -hlist=m
 
 #-------------------------------------------------------------------------------
 # C compiler
